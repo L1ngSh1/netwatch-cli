@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -154,22 +153,21 @@ def test_coord_system_auto_compare_does_not_crash(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(not HAS_SHAPELY, reason="shapely not installed")
-def test_stress_script_refuses_whole_only_boundary() -> None:
-    completed = subprocess.run(
+def test_stress_script_refuses_whole_only_boundary(monkeypatch, capsys) -> None:
+    from scripts.geo import test_guangzhou_boundary_stress as script
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
         [
-            sys.executable,
             "scripts/geo/test_guangzhou_boundary_stress.py",
             "--boundary",
             str(FIXTURE_DIR / "guangzhou_whole_only.geojson"),
         ],
-        cwd=Path.cwd(),
-        text=True,
-        capture_output=True,
-        check=False,
     )
 
-    assert completed.returncode == 1
-    assert "not a Guangzhou child-district boundary" in completed.stderr
+    assert script.main() == 1
+    assert "not a Guangzhou child-district boundary" in capsys.readouterr().err
 
 
 def _write_known_regression_boundary(tmp_path: Path) -> Path:

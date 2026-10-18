@@ -2,7 +2,9 @@
 
 日期：2026-10-16（Asia/Shanghai）
 
-状态：方案待确认。本轮只新增计划，实施补丁尚未开始。
+状态：已确认。2026-10-18 P0 复审通过并提交；本轮继续 P1，P2 及以后未开始。
+
+阶段记录：[P0 验收](2026-10-16-lightweight-p0-results.md)。
 
 工作分支：`codex/architecture-audit`
 

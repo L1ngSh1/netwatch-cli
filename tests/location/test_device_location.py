@@ -63,7 +63,7 @@ def test_html_contains_latitude_longitude_accuracy() -> None:
 # --- Server /location handler tests ---
 
 
-def test_server_location_returns_device_location_result(monkeypatch) -> None:
+def test_server_location_returns_device_location_result(allow_localhost, monkeypatch) -> None:
     """POST to /location must produce a DeviceLocationResult with coordinates."""
     opened_urls = []
 
@@ -94,7 +94,7 @@ def test_server_location_returns_device_location_result(monkeypatch) -> None:
     assert "browser geolocation" in result.source
 
 
-def test_server_error_returns_error(monkeypatch) -> None:
+def test_server_error_returns_error(allow_localhost, monkeypatch) -> None:
     """POST to /error must produce a DeviceLocationResult with error message."""
     def fake_open(url: str) -> None:
         import http.client
@@ -119,7 +119,7 @@ def test_server_error_returns_error(monkeypatch) -> None:
     assert result.latitude is None
 
 
-def test_timeout_returns_error(monkeypatch) -> None:
+def test_timeout_returns_error(allow_localhost, monkeypatch) -> None:
     """No POST must produce a timeout error."""
     # Don't open any browser; just wait for timeout
     monkeypatch.setattr("webbrowser.open", lambda url: None)
@@ -130,7 +130,7 @@ def test_timeout_returns_error(monkeypatch) -> None:
     assert "超时" in result.error
 
 
-def test_webbrowser_open_called_with_localhost(monkeypatch) -> None:
+def test_webbrowser_open_called_with_localhost(allow_localhost, monkeypatch) -> None:
     """run_browser_geolocation must call webbrowser.open with a 127.0.0.1 URL."""
     opened_urls = []
 
@@ -163,7 +163,7 @@ def test_webbrowser_open_called_with_localhost(monkeypatch) -> None:
 
 
 
-def test_no_file_written(monkeypatch, tmp_path) -> None:
+def test_no_file_written(allow_localhost, monkeypatch, tmp_path) -> None:
     """run_browser_geolocation must not write any files."""
     monkeypatch.setattr("webbrowser.open", lambda url: None)
     files_before = set(str(p) for p in tmp_path.rglob("*"))
@@ -488,7 +488,7 @@ def test_reverse_geocode_offline_empty_results(monkeypatch) -> None:
     assert "no results" in (result.get("error") or "")
 
 
-def test_run_browser_geolocation_fills_reverse_geocode(monkeypatch) -> None:
+def test_run_browser_geolocation_fills_reverse_geocode(allow_localhost, monkeypatch) -> None:
     """run_browser_geolocation must call _fill_reverse_geocode on success."""
     from netwatch.location.geolocation.device import _fill_reverse_geocode, DeviceLocationResult
 
