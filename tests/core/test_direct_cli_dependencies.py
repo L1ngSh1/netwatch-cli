@@ -41,3 +41,16 @@ def test_lazy_precise_call_uses_domain_dependency_not_entry_override(monkeypatch
     assert ui.run_precise_location_report(timeout_seconds=17) is sentinel
     domain.assert_called_once_with(timeout_seconds=17)
     trap.assert_not_called()
+
+
+@pytest.mark.parametrize("name", ["get_default_gateway", "get_default_route_gateway", "get_lan_router_gateway"])
+def test_router_dependencies_are_direct_and_not_entry_overrides(monkeypatch, name):
+    from netwatch import cli
+    from netwatch.cli_modules import router as ui
+    from netwatch.network import router
+    dependency = getattr(ui, name)
+    assert dependency is getattr(router, name)
+    trap = Mock(side_effect=AssertionError("legacy router override must be ignored"))
+    monkeypatch.setattr(cli, name, trap, raising=False)
+    assert getattr(ui, name) is dependency
+    trap.assert_not_called()

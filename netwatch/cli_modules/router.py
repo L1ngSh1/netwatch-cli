@@ -10,35 +10,15 @@ from netwatch.network.router import (
     RouterDevice,
     extract_xiaomi_stok,
     fetch_xiaomi_device_list,
-    get_default_route_gateway as _default_get_default_route_gateway,
-    get_default_gateway as _default_get_default_gateway,
-    get_lan_router_gateway as _default_get_lan_router_gateway,
+    get_default_route_gateway,
+    get_default_gateway,
+    get_lan_router_gateway,
     is_virtual_gateway,
     mask_stok,
 )
-from netwatch.cli_modules.common import cli_override, console
+from netwatch.cli_modules.common import console
 
 LAST_ROUTER_DEVICES: list[RouterDevice] = []
-
-
-def get_default_gateway():
-    return cli_override("get_default_gateway", _default_get_default_gateway, current=get_default_gateway)()
-
-
-def get_default_route_gateway():
-    return cli_override(
-        "get_default_route_gateway",
-        _default_get_default_route_gateway,
-        current=get_default_route_gateway,
-    )()
-
-
-def get_lan_router_gateway():
-    return cli_override(
-        "get_lan_router_gateway",
-        _default_get_lan_router_gateway,
-        current=get_lan_router_gateway,
-    )()
 
 
 def show_open_router_admin() -> None:

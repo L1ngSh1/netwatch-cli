@@ -12,7 +12,7 @@ import netwatch.network.router as router
 
 
 def test_xiaomi_redmi_stok_missing_guidance_for_generic_luci_url(monkeypatch, capsys) -> None:
-    from netwatch import cli
+    from netwatch.cli_modules import router as cli
     from netwatch.cli_modules import router as cli_router
 
     monkeypatch.setattr(cli_router, "get_lan_router_gateway", lambda: "192.168.1.1")
@@ -38,7 +38,7 @@ def test_xiaomi_redmi_stok_missing_guidance_for_generic_luci_url(monkeypatch, ca
 
 
 def test_generic_luci_option_only_shows_notice(monkeypatch, capsys) -> None:
-    from netwatch import cli
+    from netwatch.cli_modules import router as cli
 
     monkeypatch.setattr(cli.Prompt, "ask", lambda *args, **kwargs: "2")
     monkeypatch.setattr(
@@ -57,7 +57,7 @@ def test_generic_luci_option_only_shows_notice(monkeypatch, capsys) -> None:
 
 
 def test_router_sync_prompt_no_generic_misleading_xiaomi_copy(capsys) -> None:
-    from netwatch import cli
+    from netwatch.cli_modules import router as cli
 
     cli.show_generic_luci_sync_notice()
 
