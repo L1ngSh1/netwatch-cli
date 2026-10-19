@@ -4,87 +4,34 @@ from __future__ import annotations
 
 import sys
 
-from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
-from rich.prompt import Confirm, IntPrompt, Prompt
+from rich.prompt import Prompt
 from rich.table import Table
 
-from netwatch.location.geolocation.device import DeviceLocationResult, run_browser_geolocation
-from netwatch.network.info import (
-    NetworkCandidate,
-    get_display_network_interfaces,
-    get_lan_scan_candidates,
-    get_preferred_physical_interface,
-)
-from netwatch.network.scanner import scan_network
-from netwatch.network.router import (
-    NetworkDevice,
-    RouterApiError,
-    RouterDevice,
-    extract_xiaomi_stok,
-    fetch_xiaomi_device_list,
-    get_default_gateway,
-    mask_stok,
-    merge_devices,
-    router_devices_to_network_devices,
-    scan_results_to_network_devices,
-)
 from netwatch.speedtest.speed import format_speed, sample_network_speed
 from netwatch.core.banner import print_banner
-from netwatch.cli_modules.lan import (
-    build_lan_discovery_menu,
-    choose_lan_scan_candidate,
-    print_network_devices,
-    run_lan_scan,
-    show_enhanced_lan_discovery,
-    show_lan_discovery_menu,
-    show_router_only_device_sync,
-)
-from netwatch.cli_modules.location import (
-    print_device_location_result,
-    print_precise_location_report,
-    show_network_info,
-    show_precise_offline_location,
-)
-from netwatch.cli_modules.router import (
-    choose_router_admin_url,
-    choose_router_sync_method,
-    normalize_router_admin_url,
-    print_missing_stok_guidance,
-    prompt_and_fetch_xiaomi_redmi_stok_devices,
-    prompt_and_fetch_xiaomi_router_devices,
-    show_generic_luci_sync_notice,
-    show_open_router_admin,
-)
+from netwatch.cli_modules.lan import show_lan_discovery_menu
+from netwatch.cli_modules.location import show_network_info, show_precise_offline_location
+from netwatch.cli_modules.router import show_open_router_admin
 from netwatch.cli_modules.speedtest import (
     open_speedtest_cn_reference,
-    print_speedtest_result,
-    run_best_speedtest,
-    run_librespeed_custom_speedtest,
-    run_speedtest_with_status,
-    run_speedtest_cn_browser_automation,
     show_auto_speedtest,
     show_clear_preferred_speedtest,
     show_isp_city_preset_speedtest,
     show_keyword_speedtest,
     show_last_speedtest_raw_summary,
     show_librespeed_custom_menu,
-    show_librespeed_local_json_speedtest,
-    show_librespeed_server_json_speedtest,
     show_ookla_selection_details,
     show_proxy_exit_speedtest,
     show_save_last_speedtest_server,
     show_speedtest_backend_info,
     show_speedtest_by_server_id,
-    show_speedtest_cn_browser_automation,
     show_speedtest_cn_main,
     show_speedtest_config,
-    format_speedtest_cn_label,
 )
-from netwatch.network.proxy_probe import probe_exit_ip
 
-console = Console()
+from netwatch.cli_modules.common import console
 
 
 def _is_interactive_session() -> bool:

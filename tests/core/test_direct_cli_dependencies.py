@@ -86,3 +86,16 @@ def test_speedtest_printer_uses_consumer_and_explicit_detail_contract(monkeypatc
     ui._print_speedtest_result(sentinel, detailed=detailed)
     printer.assert_called_once_with(sentinel, detailed=detailed)
     trap.assert_not_called()
+
+
+@pytest.mark.parametrize("module", ["location", "router", "speedtest", "lan"])
+def test_child_console_does_not_follow_replaced_main_entry(monkeypatch, capsys, module):
+    from netwatch import cli
+    from netwatch.cli_modules import common
+    ui = importlib.import_module("netwatch.cli_modules." + module)
+    trap = Mock(side_effect=AssertionError("child console must not look up entry"))
+    monkeypatch.setattr(cli, "console", Mock(print=trap))
+    assert ui.console is common.console
+    ui.console.print("DIRECT_CONSOLE_SENTINEL")
+    assert "DIRECT_CONSOLE_SENTINEL" in capsys.readouterr().out
+    trap.assert_not_called()
