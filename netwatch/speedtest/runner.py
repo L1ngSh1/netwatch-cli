@@ -151,6 +151,17 @@ def list_speedtest_servers() -> list[dict]:
     return [{"error": "当前后端无法获取服务器列表。建议使用“带宽测速”自动模式，或安装官方 Ookla CLI。"}]
 
 
+def list_ookla_speedtest_servers() -> list[dict]:
+    """List official Ookla candidates without borrowing another backend's IDs."""
+    if not ookla_cli.is_available():
+        return [{"error": (
+            "关键词及运营商/城市选服需要官方 Ookla CLI。\n"
+            f"{ookla_cli.get_install_hint()}\n"
+            "也可返回高级功能，手动选择通用测速诊断。"
+        )}]
+    return ookla_cli.list_servers()
+
+
 def filter_servers_by_keyword(servers: list[dict], keyword: str, limit: int | None = None) -> list[dict]:
     """Filter Ookla servers by name, location, country, or host."""
     normalized_keyword = keyword.strip().lower()

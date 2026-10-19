@@ -40,7 +40,7 @@ from netwatch.speedtest.runner import (
     get_last_successful_speedtest_result,
     get_selection_details,
     get_speedtest_quality_details,
-    list_speedtest_servers,
+    list_ookla_speedtest_servers,
     run_best_speedtest as _default_run_best_speedtest,
     run_configured_speedtest,
     run_librespeed_custom_speedtest as _default_run_librespeed_custom_speedtest,
@@ -375,20 +375,32 @@ def show_ookla_selection_details() -> None:
 
 def show_keyword_speedtest() -> None:
     """Filter Ookla servers by keyword and test selected candidates."""
-    keyword = Prompt.ask("请输入服务器关键词，例如 Guangzhou / Guangdong / China Mobile / Hong Kong").strip()
+    try:
+        keyword = Prompt.ask("请输入服务器关键词，例如 Guangzhou / Guangdong / China Mobile / Hong Kong").strip()
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]已取消关键词选服，返回菜单。[/yellow]")
+        return
     if not keyword:
         console.print("[yellow]关键词不能为空。[/yellow]")
         return
     run_keyword_speedtest(keyword)
 
 
-def run_keyword_speedtest(keyword: str) -> None:
-    """Run a server keyword speedtest flow."""
-    servers = list_speedtest_servers()
+def load_ookla_selection_servers() -> list[dict]:
+    """Present list errors; availability and backend identity belong to the runner."""
+    servers = list_ookla_speedtest_servers()
     if not servers or servers[0].get("error"):
-        console.print("[yellow]当前后端无法获取服务器列表。建议使用“带宽测速”自动模式，或安装官方 Ookla CLI。[/yellow]")
+        console.print("[yellow]未能获取官方 Ookla 服务器列表。[/yellow]")
         if servers:
             console.print(f"[dim]{servers[0].get('error')}[/dim]")
+        return []
+    return servers
+
+
+def run_keyword_speedtest(keyword: str) -> None:
+    """Run a server keyword speedtest flow."""
+    servers = load_ookla_selection_servers()
+    if not servers:
         return
 
     matches = filter_servers_by_keyword(servers, keyword, limit=10)
@@ -397,17 +409,21 @@ def run_keyword_speedtest(keyword: str) -> None:
         return
 
     print_server_matches(matches, title=f"关键词匹配服务器：{keyword}")
-    selection = Prompt.ask("请输入要测速的 server id，或输入 auto 自动测试前 3 个", default="auto").strip()
-    interface = get_speedtest_interface_name()
+    try:
+        selection = Prompt.ask("请输入要测速的 server id，或输入 auto 自动测试前 3 个", default="auto").strip()
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]已取消关键词选服，返回菜单。[/yellow]")
+        return
 
     if selection.lower() == "auto":
-        auto_test_keyword_servers(matches[:3], interface=interface)
+        auto_test_keyword_servers(matches[:3], interface=get_speedtest_interface_name())
         return
 
     valid_ids = {str(server.get("id")) for server in matches if server.get("id")}
     if selection not in valid_ids:
         console.print("[yellow]输入的 server id 不在当前匹配列表中。[/yellow]")
         return
+    interface = get_speedtest_interface_name()
     result = run_speedtest_with_status(lambda: run_speedtest_with_backend("official-ookla-cli", server_id=selection, interface=interface))
     if result is None:
         return
@@ -418,17 +434,15 @@ def run_keyword_speedtest(keyword: str) -> None:
 
 def show_isp_city_preset_speedtest() -> None:
     """Try keyword presets based on current ISP and city."""
+    servers = load_ookla_selection_servers()
+    if not servers:
+        return
     info = probe_exit_ip()
     keywords = build_isp_preset_keywords(
         org=info.org or "",
         city=info.city or "",
         region=info.region or "",
     )
-
-    servers = list_speedtest_servers()
-    if not servers or servers[0].get("error"):
-        console.print("[yellow]当前后端无法获取服务器列表。建议手动带宽测速或安装官方 Ookla CLI。[/yellow]")
-        return
 
     for keyword in keywords:
         if keyword.lower() == "hong kong":
