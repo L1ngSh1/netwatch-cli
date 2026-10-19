@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from netwatch.location.admin.boundary_tools import probe_boundary, validate_boundary_geojson
+from scripts.geo.boundary_tools import probe_boundary, validate_boundary_geojson
 from netwatch.location.admin.coord_transform import out_of_china, wgs84_to_gcj02
 
 try:

@@ -15,14 +15,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from netwatch.location.admin.boundary_stress import (  # noqa: E402
+from scripts.geo.boundary_stress import (  # noqa: E402
     ProbePoint,
     is_whole_city_boundary,
     load_probe_points,
     run_boundary_stress,
     run_known_point_probes,
 )
-from netwatch.location.admin.boundary_tools import probe_boundary, validate_boundary_geojson  # noqa: E402
+from scripts.geo.boundary_tools import probe_boundary, validate_boundary_geojson  # noqa: E402
 
 
 DEFAULT_BOUNDARY = Path.home() / ".netwatch" / "geo" / "guangzhou_districts.geojson"

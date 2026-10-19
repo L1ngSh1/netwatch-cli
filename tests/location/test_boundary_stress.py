@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from netwatch.location.admin.boundary_stress import (
+from scripts.geo.boundary_stress import (
     generate_boundary_points,
     generate_epsilon_points_around,
     generate_representative_points,
@@ -17,7 +17,7 @@ from netwatch.location.admin.boundary_stress import (
     run_boundary_stress,
     run_known_point_probes,
 )
-from netwatch.location.admin.boundary_tools import validate_boundary_geojson
+from scripts.geo.boundary_tools import validate_boundary_geojson
 from netwatch.location.admin.offline_boundary import DEFAULT_BOUNDARY_GEOJSON, load_boundary_dataset, locate_admin_by_point
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

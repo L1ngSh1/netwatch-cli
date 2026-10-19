@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-from netwatch.location.admin.boundary_tools import (
+from scripts.geo.boundary_tools import (
     BoundaryProbeResult,
     BoundaryValidationResult,
     probe_boundary,
