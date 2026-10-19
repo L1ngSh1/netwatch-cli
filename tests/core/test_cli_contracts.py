@@ -1,7 +1,7 @@
 """Protect menu wiring and frozen speedtest semantics with synthetic inputs."""
 
 import ast
-import hashlib
+from _ast_contract import FROZEN_BODY_HASHES, stable_ast_hash
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -131,5 +131,5 @@ def test_frozen_function_ast(path, name, expected):
     function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == name)
     # Freeze bodies, not version-specific FunctionDef fields (e.g. type_params).
     body = ast.Module(body=function.body, type_ignores=[])
-    digest = hashlib.sha256(ast.dump(body, include_attributes=False).encode()).hexdigest()
-    assert digest == expected
+    digest = stable_ast_hash(body)
+    assert digest == FROZEN_BODY_HASHES[expected]

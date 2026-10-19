@@ -117,7 +117,10 @@ def test_malformed_validation_warning() -> None:
 def test_whole_only_validation_warning() -> None:
     result = validate_boundary_geojson(FIXTURE_DIR / "guangzhou_whole_only.geojson")
 
-    assert result.load_result == "ok"
+    if HAS_SHAPELY:
+        assert result.load_result == "ok"
+    else:
+        assert "requires shapely" in result.load_result
     assert is_whole_city_boundary(result)
     assert any("whole-city" in warning for warning in result.warnings)
 

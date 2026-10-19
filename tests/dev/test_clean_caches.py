@@ -177,7 +177,7 @@ class TestCollectCandidates:
         self, patched_env: None, fake_root: Path
     ) -> None:
         dirs, files, skipped = clean_caches.collect_candidates()
-        dir_rel = {str(d.relative_to(fake_root)) for d in dirs}
+        dir_rel = {d.relative_to(fake_root).as_posix() for d in dirs}
         assert "src/utils/__pycache__" in dir_rel
         assert "tests/unit/__pycache__" in dir_rel
 
@@ -185,14 +185,14 @@ class TestCollectCandidates:
         self, patched_env: None, fake_root: Path
     ) -> None:
         dirs, files, skipped = clean_caches.collect_candidates()
-        dir_rel = {str(d.relative_to(fake_root)) for d in dirs}
+        dir_rel = {d.relative_to(fake_root).as_posix() for d in dirs}
         assert "build" in dir_rel
 
     def test_detects_pyc_files(
         self, patched_env: None, fake_root: Path
     ) -> None:
         dirs, files, skipped = clean_caches.collect_candidates()
-        file_rel = {str(f.relative_to(fake_root)) for f in files}
+        file_rel = {f.relative_to(fake_root).as_posix() for f in files}
         assert "temp.pyc" in file_rel
         assert "temp.pyo" in file_rel
 
@@ -201,7 +201,7 @@ class TestCollectCandidates:
     ) -> None:
         """__pycache__ under .venv must be skipped."""
         dirs, files, skipped = clean_caches.collect_candidates()
-        dir_rel = {str(d.relative_to(fake_root)) for d in dirs}
+        dir_rel = {d.relative_to(fake_root).as_posix() for d in dirs}
         assert ".venv/lib/__pycache__" not in dir_rel
 
     def test_skips_protected_extensions(
@@ -209,7 +209,7 @@ class TestCollectCandidates:
     ) -> None:
         """.geojson and .csv under data must be skipped."""
         dirs, files, skipped = clean_caches.collect_candidates()
-        file_rel = {str(f.relative_to(fake_root)) for f in files}
+        file_rel = {f.relative_to(fake_root).as_posix() for f in files}
         assert "netwatch/location/data/china_district_centers.csv" not in file_rel
         assert "netwatch/location/data/sample_boundary.geojson" not in file_rel
         assert "tests/fixtures/data.geojson" not in file_rel
@@ -226,7 +226,7 @@ class TestCollectCandidates:
         """Ensure non-protected pycache dirs are not accidentally skipped."""
         # .venv's __pycache__ is the only one under protected paths in our fixture
         dirs, files, skipped = clean_caches.collect_candidates()
-        dir_rel = {str(d.relative_to(fake_root)) for d in dirs}
+        dir_rel = {d.relative_to(fake_root).as_posix() for d in dirs}
         assert "src/utils/__pycache__" in dir_rel
         assert "tests/unit/__pycache__" in dir_rel
 

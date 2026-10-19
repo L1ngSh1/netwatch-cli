@@ -1,7 +1,7 @@
 """P1 reduces advanced overhead, never basic capabilities or entry points."""
 
 import ast
-import hashlib
+from _ast_contract import FROZEN_BODY_HASHES, stable_ast_hash
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -128,4 +128,4 @@ def test_basic_function_bodies_match_p0(path, name, expected):
     tree = ast.parse((ROOT / path).read_text())
     function = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
     body = ast.Module(body=function.body, type_ignores=[])
-    assert hashlib.sha256(ast.dump(body, include_attributes=False).encode()).hexdigest() == expected
+    assert stable_ast_hash(body) == FROZEN_BODY_HASHES[expected]

@@ -446,6 +446,7 @@ def test_browser_automation_keyboard_interrupt_returns_error(monkeypatch) -> Non
 def test_save_debug_screenshot_uses_netwatch_debug_dir(monkeypatch, tmp_path) -> None:
     page = FakePage()
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
     screenshot_path = browser_mod.save_debug_screenshot(page, enabled=True)
 

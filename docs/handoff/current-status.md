@@ -14,7 +14,7 @@
 | P3a/b/c | 定位、路由、测速消费显式依赖，测试 mock 实际调用位置 | `cli_override` 调用数 15 → 9 → 6 → 0 |
 | P4 | 普通共享 Console、移除入口反查和无消费者再导出、严格 AST 边界门禁 | 0 个运行时反查桥、0 个 ConsoleProxy、0 个严格违规；人为违规 fixture 必须失败 |
 | P5 | 只迁出地理开发资产 | helper 到 `scripts/geo/`，原始构建 CSV 到 `scripts/geo/data/`；定位算法、运行时中心点及 sample 数据保留 |
-| P6 | 单一交接页、包合同检查、隔离安装验收、跨平台 CI | 本地全依赖 446 passed；远端五组合待验收 |
+| P6 | 单一交接页、包合同检查、隔离安装验收、跨平台 CI | 本地全依赖 451 passed；远端五组合待验收 |
 
 两处冻结函数体保持原样：`runner.run_best_speedtest()`、`cli_modules.speedtest.show_auto_speedtest()`；AST 哈希和原行为回归均继续执行。主菜单 4、主菜单 5 的简洁/详情切换、高级 1 的完整诊断不变。
 
@@ -52,7 +52,7 @@ CI 从干净 checkout 构建 wheel，再创建新的环境安装该 wheel；使�
 | 进入本轮前基线 | 358 passed；未 mock 外部 I/O 为 0 |
 | P2 / P3a / P3b / P3c | 389 / 395 / 398 / 405 passed；未 mock 外部 I/O 均为 0 |
 | P4 / P5 | 435 / 437 passed；未 mock 外部 I/O 均为 0 |
-| 本地 P6 | 446 passed；未 mock 外部 I/O 为 0 |
+| 本地 P6 | 451 passed；另在 Python 3.10 基础环境为 437 passed / 14 个原有可选几何用例 skipped；未 mock 外部 I/O 均为 0 |
 | P4 严格边界 | `STRICT_BOUNDARY_VIOLATIONS=0`；违规导入、相对导入、动态反查及缺失源码 fixture 非零退出 |
 | P5 固定地理结果 | 同一数据的验证、六组坐标探针与压力报告 JSON 迁移前后逐字节相同 |
 | P5 原始输入与中心点 | SHA-256 不变；运行时 CSV 的 CRLF 字节也保留，跨平台 checkout 使用 `-text` |
@@ -61,6 +61,8 @@ CI 从干净 checkout 构建 wheel，再创建新的环境安装该 wheel；使�
 | 隔离默认 wheel 安装 | 通过：包路径位于新环境、基础地理依赖存在、Playwright extra 存在、Shapely 非必需、主菜单/高级流程 mock 正常 |
 
 这里的 6428 字节压缩差是这两个具体 wheel 的实际差值，不是虚拟环境/RAM/耗时节省。原始构建 CSV 原本就不在 wheel，不把移动它算成安装体积减少。没有卸载用户环境中的 Playwright、NumPy、SciPy 或其他依赖。
+
+首轮 CI 揭示并修正了验收可移植性：冻结体仍来自 P0 `2f6a465`，改用版本稳定的 AST 字段序列化而非版本相关的 `ast.dump` 文本；保留旧参数标签，进入本轮前的 358 个 nodeid 全数保留，新增 93 个。缺 Shapely 组合明确断言既有依赖缺失结果，all 组合保留原正向几何断言；没有新增 skip。Windows 测试只修正路径表示和 HOME/USERPROFILE 合成环境，不改变运行时路径处理。
 
 ### 平台矩阵（P6 当前待远端完成）
 

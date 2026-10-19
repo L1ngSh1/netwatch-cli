@@ -40,7 +40,10 @@ def test_validate_sample_boundary_loads() -> None:
     assert result.exists is True
     assert result.json_type == "FeatureCollection"
     assert result.feature_count == 2
-    assert result.load_result == "ok"
+    if HAS_SHAPELY:
+        assert result.load_result == "ok"
+    else:
+        assert "requires shapely" in result.load_result
     assert {"黄埔区", "增城区"} <= set(result.detected_names)
 
 
@@ -136,3 +139,17 @@ def _feature(name: str, adcode: str, min_lon: float, min_lat: float, max_lon: fl
             ],
         },
     }
+
+
+def test_geojson_validation_reports_missing_geometry_dependency(monkeypatch):
+    from scripts.geo import boundary_tools
+    from netwatch.location.admin.offline_boundary import BoundaryDependencyError
+
+    def missing(*args, **kwargs):
+        raise BoundaryDependencyError("precise offline location requires shapely")
+
+    monkeypatch.setattr(boundary_tools, "load_boundary_dataset", missing)
+    result = boundary_tools.validate_boundary_geojson(Path("netwatch/location/data/boundaries/china_districts.sample.geojson"))
+    assert result.feature_count == 2
+    assert {"黄埔区", "增城区"} <= set(result.detected_names)
+    assert "requires shapely" in result.load_result
