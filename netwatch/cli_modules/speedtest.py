@@ -24,13 +24,13 @@ from netwatch.core.config import (
     save_preferred_speedtest,
     set_preferred_librespeed,
 )
-from netwatch.network.info import get_preferred_physical_interface as _default_get_preferred_physical_interface
-from netwatch.network.proxy_probe import probe_exit_ip as _default_probe_exit_ip
+from netwatch.network.info import get_preferred_physical_interface
+from netwatch.network.proxy_probe import probe_exit_ip
 from netwatch.speedtest.speedtest_cn import SpeedtestCnResult, is_valid_speedtest_cn_label
 from netwatch.speedtest.backends.ookla_cli import get_install_hint as get_ookla_install_hint
 from netwatch.speedtest.speedtest_cn_browser import (
     BrowserAutomationOptions,
-    run_speedtest_cn_browser_automation as _default_run_speedtest_cn_browser_automation,
+    run_speedtest_cn_browser_automation,
 )
 from netwatch.speedtest.runner import (
     SpeedtestResult,
@@ -41,14 +41,14 @@ from netwatch.speedtest.runner import (
     get_selection_details,
     get_speedtest_quality_details,
     list_ookla_speedtest_servers,
-    run_best_speedtest as _default_run_best_speedtest,
+    run_best_speedtest,
     run_configured_speedtest,
-    run_librespeed_custom_speedtest as _default_run_librespeed_custom_speedtest,
+    run_librespeed_custom_speedtest,
     run_speedtest_with_backend,
     show_backend_info,
     summarize_speedtest_raw,
 )
-from netwatch.cli_modules.common import cli_override, console
+from netwatch.cli_modules.common import console
 
 SPEEDTEST_STATUS_MESSAGES = (
     "正在启动测速后端...",
@@ -59,46 +59,10 @@ SPEEDTEST_STATUS_MESSAGES = (
 )
 
 
-def get_preferred_physical_interface():
-    return cli_override(
-        "get_preferred_physical_interface",
-        _default_get_preferred_physical_interface,
-        current=get_preferred_physical_interface,
-    )()
-
-
-def probe_exit_ip():
-    return cli_override("probe_exit_ip", _default_probe_exit_ip, current=probe_exit_ip)()
-
-
-def run_best_speedtest(*args, **kwargs):
-    return cli_override("run_best_speedtest", _default_run_best_speedtest, current=run_best_speedtest)(*args, **kwargs)
-
-
-def run_librespeed_custom_speedtest(*args, **kwargs):
-    return cli_override(
-        "run_librespeed_custom_speedtest",
-        _default_run_librespeed_custom_speedtest,
-        current=run_librespeed_custom_speedtest,
-    )(*args, **kwargs)
-
-
-def run_speedtest_cn_browser_automation(*args, **kwargs):
-    return cli_override(
-        "run_speedtest_cn_browser_automation",
-        _default_run_speedtest_cn_browser_automation,
-        current=run_speedtest_cn_browser_automation,
-    )(*args, **kwargs)
-
-
 def _print_speedtest_result(result: SpeedtestResult, detailed: bool = True) -> None:
-    printer = cli_override("print_speedtest_result", print_speedtest_result, current=print_speedtest_result)
-    if printer is print_speedtest_result:
-        printer(result, detailed=detailed)
-    elif detailed:
-        printer(result)
-    else:
-        printer(result, detailed=detailed)
+    print_speedtest_result(result, detailed=detailed)
+
+
 def show_auto_speedtest() -> None:
     """Run the best available bandwidth test backend."""
     console.print("[dim]带宽测速会连接公网测速服务器，可能需要几十秒。[/dim]")

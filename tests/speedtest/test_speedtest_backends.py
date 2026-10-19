@@ -725,7 +725,8 @@ def test_quality_details_packet_loss_triggers_wifi_check() -> None:
 def test_print_speedtest_result_cmhk_hong_kong_no_crash() -> None:
     """print_speedtest_result must not crash with a real-world CMHK Hong Kong result."""
     import io
-    from netwatch.cli import print_speedtest_result, Console
+    from netwatch.cli_modules.speedtest import print_speedtest_result
+    from rich.console import Console
 
     result = SpeedtestResult(
         backend="official-ookla-cli",
@@ -752,7 +753,7 @@ def test_print_speedtest_result_cmhk_hong_kong_no_crash() -> None:
     console = Console(file=buf, force_terminal=False, width=120)
 
     # Temporarily replace the module-level console
-    import netwatch.cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
     original_console = cli_mod.console
     cli_mod.console = console
     try:
@@ -780,7 +781,8 @@ def test_print_speedtest_result_cmhk_hong_kong_no_crash() -> None:
 def test_print_speedtest_result_tun_scenario_no_crash() -> None:
     """print_speedtest_result must not crash and must warn about TUN/VPN."""
     import io
-    from netwatch.cli import print_speedtest_result, Console
+    from netwatch.cli_modules.speedtest import print_speedtest_result
+    from rich.console import Console
 
     result = SpeedtestResult(
         backend="official-ookla-cli",
@@ -798,7 +800,7 @@ def test_print_speedtest_result_tun_scenario_no_crash() -> None:
     buf = io.StringIO()
     console = Console(file=buf, force_terminal=False, width=120)
 
-    import netwatch.cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
     original_console = cli_mod.console
     cli_mod.console = console
     try:
@@ -815,7 +817,8 @@ def test_print_speedtest_result_tun_scenario_no_crash() -> None:
 def test_show_auto_speedtest_smoke_no_crash(monkeypatch) -> None:
     """show_auto_speedtest must not crash when run_best_speedtest returns a real result."""
     import io
-    from netwatch.cli import show_auto_speedtest, Console
+    from netwatch.cli_modules.speedtest import show_auto_speedtest
+    from rich.console import Console
     from netwatch.core import config
 
     test_result = SpeedtestResult(
@@ -838,19 +841,19 @@ def test_show_auto_speedtest_smoke_no_crash(monkeypatch) -> None:
     )
 
     # Mock: no preferred server config
-    monkeypatch.setattr(config, "get_preferred_speedtest", lambda: None)
+    monkeypatch.setattr("netwatch.cli_modules.speedtest.get_preferred_speedtest", lambda: None)
     # Mock: run_best_speedtest returns our test result
-    monkeypatch.setattr("netwatch.cli.run_best_speedtest", lambda use_interface=True: test_result)
+    monkeypatch.setattr("netwatch.cli_modules.speedtest.run_best_speedtest", lambda use_interface=True: test_result)
     # Mock: get_preferred_physical_interface returns en0
     monkeypatch.setattr(
-        "netwatch.cli.get_preferred_physical_interface",
+        "netwatch.cli_modules.speedtest.get_preferred_physical_interface",
         lambda: {"name": "en0", "ip": "192.168.31.75", "reason": "preferred"},
     )
 
     buf = io.StringIO()
     console = Console(file=buf, force_terminal=False, width=120)
 
-    import netwatch.cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
     original_console = cli_mod.console
     cli_mod.console = console
     try:
@@ -870,7 +873,8 @@ def test_show_auto_speedtest_smoke_no_crash(monkeypatch) -> None:
 def test_open_speedtest_cn_reference_calls_webbrowser(monkeypatch) -> None:
     """open_speedtest_cn_reference must call webbrowser.open and not enter manual flow."""
     import io
-    from netwatch.cli import open_speedtest_cn_reference, Console
+    from netwatch.cli_modules.speedtest import open_speedtest_cn_reference
+    from rich.console import Console
 
     called_urls = []
 
@@ -884,7 +888,7 @@ def test_open_speedtest_cn_reference_calls_webbrowser(monkeypatch) -> None:
     buf = io.StringIO()
     console = Console(file=buf, force_terminal=False, width=120)
 
-    import netwatch.cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
     original_console = cli_mod.console
     cli_mod.console = console
     try:
@@ -901,7 +905,7 @@ def test_open_speedtest_cn_reference_calls_webbrowser(monkeypatch) -> None:
 
 def test_show_librespeed_server_json_speedtest_uses_mocked_input(monkeypatch) -> None:
     """LibreSpeed CLI flow should pass mocked user input without real network calls."""
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     answers = iter(["https://example.com/servers.json", "15"])
     calls = []
@@ -913,7 +917,7 @@ def test_show_librespeed_server_json_speedtest_uses_mocked_input(monkeypatch) ->
         return SpeedtestResult(backend="librespeed-cli", download_mbps=100)
 
     monkeypatch.setattr(cli_mod, "run_librespeed_custom_speedtest", fake_run)
-    monkeypatch.setattr(cli_mod, "print_speedtest_result", lambda result: None)
+    monkeypatch.setattr(cli_mod, "print_speedtest_result", lambda result, detailed=True: None)
 
     cli_mod.show_librespeed_server_json_speedtest()
 
@@ -921,7 +925,7 @@ def test_show_librespeed_server_json_speedtest_uses_mocked_input(monkeypatch) ->
 
 
 def test_show_librespeed_local_json_rejects_missing_file(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     called = []
     monkeypatch.setattr(cli_mod.Prompt, "ask", lambda *args, **kwargs: "/tmp/does-not-exist.json")
@@ -933,7 +937,7 @@ def test_show_librespeed_local_json_rejects_missing_file(monkeypatch) -> None:
 
 
 def test_show_librespeed_local_json_rejects_non_json_file(monkeypatch, tmp_path) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     text_file = tmp_path / "servers.txt"
     text_file.write_text("{}", encoding="utf-8")
@@ -947,7 +951,7 @@ def test_show_librespeed_local_json_rejects_non_json_file(monkeypatch, tmp_path)
 
 
 def test_show_librespeed_server_json_rejects_invalid_url(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     called = []
     monkeypatch.setattr(cli_mod.Prompt, "ask", lambda *args, **kwargs: "example.com/servers.json")
@@ -959,7 +963,7 @@ def test_show_librespeed_server_json_rejects_invalid_url(monkeypatch) -> None:
 
 
 def test_show_librespeed_duration_rejects_non_numeric(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     answers = iter(["https://example.com/servers.json", "abc"])
     called = []
@@ -972,7 +976,7 @@ def test_show_librespeed_duration_rejects_non_numeric(monkeypatch) -> None:
 
 
 def test_show_librespeed_duration_rejects_out_of_range(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     answers = iter(["https://example.com/servers.json", "301"])
     called = []
@@ -985,7 +989,7 @@ def test_show_librespeed_duration_rejects_out_of_range(monkeypatch) -> None:
 
 
 def test_librespeed_submenu_ctrl_c_returns_to_parent(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     def raise_keyboard_interrupt(*args, **kwargs):
         raise KeyboardInterrupt
@@ -1007,7 +1011,7 @@ def test_advanced_menu_ctrl_c_returns_to_main(monkeypatch) -> None:
 
 
 def test_speedtest_ctrl_c_cancels_current_task() -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     def raise_keyboard_interrupt():
         raise KeyboardInterrupt
@@ -1035,7 +1039,7 @@ def run_proxy_speedtest_with_answers(monkeypatch, answer: str, test_result=None)
     """Helper: run show_proxy_exit_speedtest with mocked exit info + prompt answer."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
     from netwatch.network.proxy_probe import ExitIPInfo
 
     prompts = []
@@ -1150,7 +1154,7 @@ def test_proxy_speedtest_vpn_tun_judgment(monkeypatch) -> None:
     """When VPN/TUN is detected, proxy speedtest must show appropriate judgment."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
     from netwatch.network.proxy_probe import ExitIPInfo
     from netwatch.speedtest.runner import SpeedtestResult
 
@@ -1186,7 +1190,7 @@ def test_proxy_speedtest_no_vpn_tun_judgment(monkeypatch) -> None:
     """When no VPN/TUN is detected, proxy speedtest must show appropriate judgment."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
     from netwatch.network.proxy_probe import ExitIPInfo
     from netwatch.speedtest.runner import SpeedtestResult
 
@@ -1222,7 +1226,7 @@ def test_show_auto_speedtest_still_shows_detailed(monkeypatch) -> None:
     """show_auto_speedtest (advanced menu item 1) must still show detailed diagnostics."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
     from netwatch.core import config
 
     test_result = SpeedtestResult(
@@ -1235,7 +1239,7 @@ def test_show_auto_speedtest_still_shows_detailed(monkeypatch) -> None:
         raw={"interface": {"name": "en0", "internalIp": "192.168.31.75"}},
     )
 
-    monkeypatch.setattr(config, "get_preferred_speedtest", lambda: None)
+    monkeypatch.setattr("netwatch.cli_modules.speedtest.get_preferred_speedtest", lambda: None)
     monkeypatch.setattr(cli_mod, "run_best_speedtest", lambda use_interface=True: test_result)
     monkeypatch.setattr(
         cli_mod, "get_preferred_physical_interface",

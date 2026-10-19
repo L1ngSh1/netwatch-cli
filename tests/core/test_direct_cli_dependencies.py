@@ -54,3 +54,35 @@ def test_router_dependencies_are_direct_and_not_entry_overrides(monkeypatch, nam
     monkeypatch.setattr(cli, name, trap, raising=False)
     assert getattr(ui, name) is dependency
     trap.assert_not_called()
+
+
+@pytest.mark.parametrize("name,module", [
+    ("get_preferred_physical_interface", "netwatch.network.info"),
+    ("probe_exit_ip", "netwatch.network.proxy_probe"),
+    ("run_best_speedtest", "netwatch.speedtest.runner"),
+    ("run_librespeed_custom_speedtest", "netwatch.speedtest.runner"),
+    ("run_speedtest_cn_browser_automation", "netwatch.speedtest.speedtest_cn_browser"),
+])
+def test_speedtest_dependencies_are_direct_and_not_entry_overrides(monkeypatch, name, module):
+    from netwatch import cli
+    from netwatch.cli_modules import speedtest as ui
+    dependency = getattr(ui, name)
+    assert dependency is getattr(importlib.import_module(module), name)
+    trap = Mock(side_effect=AssertionError("legacy speedtest override must be ignored"))
+    monkeypatch.setattr(cli, name, trap, raising=False)
+    assert getattr(ui, name) is dependency
+    trap.assert_not_called()
+
+
+@pytest.mark.parametrize("detailed", [True, False])
+def test_speedtest_printer_uses_consumer_and_explicit_detail_contract(monkeypatch, detailed):
+    from netwatch import cli
+    from netwatch.cli_modules import speedtest as ui
+    trap = Mock(side_effect=AssertionError("legacy printer override must be ignored"))
+    printer = Mock()
+    monkeypatch.setattr(cli, "print_speedtest_result", trap, raising=False)
+    monkeypatch.setattr(ui, "print_speedtest_result", printer)
+    sentinel = object()
+    ui._print_speedtest_result(sentinel, detailed=detailed)
+    printer.assert_called_once_with(sentinel, detailed=detailed)
+    trap.assert_not_called()

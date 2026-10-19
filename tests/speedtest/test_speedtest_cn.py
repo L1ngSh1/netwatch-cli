@@ -183,7 +183,7 @@ def test_speedtest_cn_label_validator_rejects_ui_noise() -> None:
 
 
 def test_speedtest_cn_cli_label_fallback_filters_ui_noise() -> None:
-    from netwatch.cli import format_speedtest_cn_label
+    from netwatch.cli_modules.speedtest import format_speedtest_cn_label
 
     assert format_speedtest_cn_label(">>") == "-"
     assert format_speedtest_cn_label("取消") == "-"
@@ -228,7 +228,7 @@ def test_build_advanced_menu_contains_general_diagnosis_entry() -> None:
 
 
 def test_show_speedtest_cn_browser_automation_cancel_does_not_run(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     called = []
     monkeypatch.setattr(cli_mod.Prompt, "ask", lambda *args, **kwargs: "n")
@@ -240,7 +240,7 @@ def test_show_speedtest_cn_browser_automation_cancel_does_not_run(monkeypatch) -
 
 
 def test_show_speedtest_cn_browser_automation_prints_result(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     answers = iter(["y"])
     calls = []
@@ -283,7 +283,7 @@ def test_show_speedtest_cn_browser_automation_prints_result(monkeypatch) -> None
 
 
 def run_speedtest_cn_browser_cli_with_answers(monkeypatch, answers, result=None):
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     calls = []
     prompts = []
@@ -321,7 +321,7 @@ def run_speedtest_cn_browser_cli_with_answers(monkeypatch, answers, result=None)
 
 
 def test_speedtest_cn_browser_cli_default_options_are_headless_without_screenshot(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     calls = []
 
@@ -390,7 +390,7 @@ def test_speedtest_cn_browser_cli_never_prints_screenshot_path(monkeypatch) -> N
 
 
 def test_speedtest_cn_browser_cli_error_does_not_open_webbrowser(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     answers = iter(["y"])
     calls = []
@@ -448,7 +448,7 @@ def test_speedtest_cn_browser_cli_headless_http2_error_does_not_retry_visible_br
 
 def run_speedtest_cn_main_with_answers(monkeypatch, answers, result=None):
     """Helper: run show_speedtest_cn_main with mocked answers and optional result."""
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     calls = []
     prompts = []
@@ -482,7 +482,7 @@ def run_speedtest_cn_main_with_answers(monkeypatch, answers, result=None):
 
 def test_show_speedtest_cn_main_cancel_does_not_run(monkeypatch) -> None:
     """Main menu speedtest.cn: cancel should not run the browser automation."""
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import speedtest as cli_mod
 
     called = []
     monkeypatch.setattr(cli_mod.Prompt, "ask", lambda *args, **kwargs: "n")
