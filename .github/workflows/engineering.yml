@@ -1,0 +1,124 @@
+name: Engineering acceptance
+
+on:
+  push:
+    branches: [main, codex/lightweight-p6-validation]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engineering-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: '1'
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  verify:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-base-py310
+            os: ubuntu-latest
+            python: '3.10'
+            source_extras: dev
+            wheel_extras: ''
+            browser: 'no'
+            geo: 'no'
+          - name: linux-all-py314
+            os: ubuntu-latest
+            python: '3.14'
+            source_extras: all
+            wheel_extras: all
+            browser: 'yes'
+            geo: 'yes'
+          - name: windows-all-py314
+            os: windows-latest
+            python: '3.14'
+            source_extras: all
+            wheel_extras: all
+            browser: 'yes'
+            geo: 'yes'
+          - name: macos-all-py314
+            os: macos-latest
+            python: '3.14'
+            source_extras: all
+            wheel_extras: all
+            browser: 'yes'
+            geo: 'yes'
+          - name: macos-default-py314
+            os: macos-latest
+            python: '3.14'
+            source_extras: browser,dev
+            wheel_extras: browser
+            browser: 'yes'
+            geo: 'no'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install source test dependencies
+        run: python -m pip install -e ".[${{ matrix.source_extras }}]" build
+      - name: Compile and enforce dependency boundaries
+        run: |
+          python -m compileall -q netwatch scripts
+          python scripts/dev/check_cli_boundaries.py
+          git diff --check
+      - name: Isolated mocked regression suite
+        run: python -m pytest -q --junitxml=artifacts/pytest.xml
+      - name: Build clean wheel and inspect package contract
+        run: |
+          python -m build --wheel
+          python -c "from pathlib import Path; from scripts.dev.verify_wheel import inspect_wheel; import json; Path('artifacts/wheel.json').write_text(json.dumps(inspect_wheel(next(Path('dist').glob('*.whl'))),indent=2), encoding='utf-8')"
+      - name: Install wheel into independent environment and verify
+        env:
+          WHEEL_EXTRAS: ${{ matrix.wheel_extras }}
+          EXPECT_BROWSER: ${{ matrix.browser }}
+          EXPECT_GEO: ${{ matrix.geo }}
+          VERIFY_BROWSER_RUNTIME: ${{ matrix.name == 'macos-default-py314' }}
+        run: |
+          python - <<'PY'
+          import os, subprocess, sys
+          from pathlib import Path
+          environment = Path(os.environ['RUNNER_TEMP']) / 'netwatch-wheel-env'
+          subprocess.check_call([sys.executable, '-m', 'venv', str(environment)])
+          binaries = environment / ('Scripts' if os.name == 'nt' else 'bin')
+          python = binaries / ('python.exe' if os.name == 'nt' else 'python')
+          wheel = next(Path('dist').resolve().glob('*.whl'))
+          extras = os.environ['WHEEL_EXTRAS']
+          specification = str(wheel) + (f'[{extras}]' if extras else '')
+          subprocess.check_call([str(python), '-m', 'pip', 'install', specification])
+          subprocess.check_call([str(python), '-m', 'pip', 'check'])
+          subprocess.check_call([str(python), '-I', 'scripts/dev/verify_installed.py', '--browser', os.environ['EXPECT_BROWSER'], '--geo', os.environ['EXPECT_GEO'], '--output', 'artifacts/installed.json'])
+          entrypoint = binaries / ('netwatch.exe' if os.name == 'nt' else 'netwatch')
+          exit_result = subprocess.run([str(entrypoint)], input='8\n', capture_output=True, text=True, encoding='utf-8', check=True)
+          assert '再见' in exit_result.stdout
+          Path('artifacts/entrypoint.txt').write_text(exit_result.stdout, encoding='utf-8')
+          if os.environ['VERIFY_BROWSER_RUNTIME'] == 'true':
+              # Explicit install acceptance only; pytest never launches a browser.
+              subprocess.check_call([str(python), '-m', 'playwright', 'install', 'chromium'])
+              subprocess.check_call([str(python), '-I', 'scripts/dev/verify_browser_runtime.py', '--output', 'artifacts/browser.json'])
+          PY
+      - name: Retain verification artifacts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: netwatch-${{ matrix.name }}
+          path: |
+            artifacts/
+            dist/*.whl
+          retention-days: 14
+          if-no-files-found: warn

@@ -8,6 +8,11 @@
 - `plans/`：版本规划与历史路线，保留各个 v0.x 阶段的设计记录。
 - `features/`：专项功能设计文档，例如 `speedtest.cn` browser automation。
 
+## 当前状态
+
+- [唯一交接状态：轻量化 P0–P6 验收](handoff/current-status.md)
+- 其余 agent handoff 是历史记录，不作为当前状态来源。
+
 ## Key Links
 
 - [Codex handoff](handoff/handoff-to-codex.md)

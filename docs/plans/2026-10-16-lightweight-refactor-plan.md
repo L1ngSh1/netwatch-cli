@@ -2,7 +2,7 @@
 
 日期：2026-10-16（Asia/Shanghai）
 
-状态：2026-10-18 用户打回旧 P1。P0 提交 `2f6a465` 保留；P1 重修仅简化高级功能，基础功能与默认安装保持 P0 原样。P2 及以后未开始。
+状态：2026-10-19 用户要求继续完整推进至 P6，并同意独立测试分支提交、推送和完整 CI。P0/P1 保留，P2–P5 本地验收完成，P6 平台/安装包验收进行中。当前事实与证据统一见 [current-status.md](../handoff/current-status.md)。
 
 阶段记录：[P0 验收](2026-10-16-lightweight-p0-results.md)、[P1 重修](2026-10-18-lightweight-p1-results.md)。
 
