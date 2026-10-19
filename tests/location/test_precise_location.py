@@ -259,7 +259,7 @@ def test_precise_report_browser_error_returns_warning() -> None:
 
 
 def test_print_precise_location_report(monkeypatch) -> None:
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
 
     report = PreciseLocationReport(
         browser=BrowserLocationResult(latitude=23.153126, longitude=113.581404, accuracy_m=30.0),

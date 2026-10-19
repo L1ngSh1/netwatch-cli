@@ -209,7 +209,7 @@ def test_network_info_prompts_browser_geolocation(monkeypatch) -> None:
     """show_network_info must ask about browser geolocation."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -249,7 +249,7 @@ def test_network_info_no_geolocation_skips_browser(monkeypatch) -> None:
     """When user chooses n for geolocation, run_browser_geolocation must NOT be called."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -289,7 +289,7 @@ def test_network_info_yes_geolocation_calls_browser(monkeypatch) -> None:
     """When user chooses y for geolocation, run_browser_geolocation must be called."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -336,7 +336,7 @@ def test_network_info_geolocation_failure_shows_error(monkeypatch) -> None:
     """When browser geolocation fails, show error without traceback."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -522,7 +522,7 @@ def test_cli_geolocation_shows_reverse_geocode_fields(monkeypatch) -> None:
     """CLI must always show city and nearest-place fields."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -574,7 +574,7 @@ def test_cli_geolocation_offline_china_result_shows_city(monkeypatch) -> None:
     """Offline China lookup fields must take priority in the CLI table."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
 
     result = DeviceLocationResult(
         latitude=23.153126,
@@ -620,7 +620,7 @@ def test_cli_geolocation_not_installed_shows_not_enabled(monkeypatch) -> None:
     """CLI must show '未启用' when reverse_geocoder is not installed."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -692,7 +692,7 @@ def test_cli_geolocation_contains_disclaimer_text(monkeypatch) -> None:
     """CLI must show '最近地点匹配' or '不等于完整行政区划' disclaimer."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -738,7 +738,7 @@ def test_reverse_geocode_error_preserves_coordinates(monkeypatch) -> None:
     """When reverse_geocoder returns error, lat/lng must still be displayed."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 

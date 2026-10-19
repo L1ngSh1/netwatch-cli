@@ -1265,7 +1265,7 @@ def run_network_info_with_answers(monkeypatch, full_interfaces_answer: str) -> s
     """Helper: run show_network_info with mocked exit info + prompt answer."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -1339,7 +1339,7 @@ def test_network_info_asks_full_interfaces_prompt(monkeypatch) -> None:
     """Main menu 2 must ask about full interface details."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
@@ -1386,7 +1386,7 @@ def test_network_info_exit_failure_no_traceback(monkeypatch) -> None:
     """When exit probe fails, must show friendly message without traceback."""
     import io
     from rich.console import Console
-    from netwatch import cli as cli_mod
+    from netwatch.cli_modules import location as cli_mod
     from netwatch.network.info import InterfaceInfo
     from netwatch.network.proxy_probe import ExitIPInfo
 
