@@ -29,6 +29,9 @@ class FakeLocator:
         if self.page is not None and self.text is not None:
             self.page.clicked_texts.append(self.text)
 
+    def is_visible(self):
+        return self.click_error is None
+
     def inner_text(self, **kwargs):
         return self.page.next_body_text()
 
@@ -42,12 +45,14 @@ class FakePage:
         goto_errors: list[BaseException | None] | None = None,
         screenshot_error: Exception | None = None,
         available_texts: set[str] | None = None,
+        visible_selectors: set[str] | None = None,
     ):
         self.body_texts = body_texts or []
         self.goto_error = goto_error
         self.goto_errors = goto_errors
         self.screenshot_error = screenshot_error
         self.available_texts = available_texts if available_texts is not None else {"测速", "开始测速"}
+        self.visible_selectors = visible_selectors or set()
         self.clicked_texts = []
         self.body_reads = 0
         self.screenshot_path = None
@@ -75,7 +80,9 @@ class FakePage:
             if text in self.available_texts:
                 return FakeLocator(self, text=text)
             return FakeLocator(self, text=text, click_error=Exception("not found"))
-        return FakeLocator(self)
+        if selector in self.visible_selectors:
+            return FakeLocator(self, text=selector)
+        return FakeLocator(self, click_error=Exception("not found"))
 
     def next_body_text(self):
         if not self.body_texts:
@@ -449,3 +456,128 @@ def test_save_debug_screenshot_uses_netwatch_debug_dir(monkeypatch, tmp_path) ->
     assert screenshot_path.endswith(".png")
     assert actual.exists()
     assert page.screenshot_path == screenshot_path
+
+
+# DOM controls observed during the isolated manual page inspection. These tests
+# remain entirely mocked: no site access, browser launch, cookies or public IPs.
+CAPTCHA_HEADER = ".tencent-captcha-dy__header-text:visible"
+CAPTCHA_FOOTER = ".tencent-captcha-dy__footer-title:visible"
+START_CONTROL = ".start-speed-circle:visible"
+
+
+def test_visible_captcha_header_and_footer_are_detected() -> None:
+    for selector in (CAPTCHA_HEADER, CAPTCHA_FOOTER):
+        page = FakePage(visible_selectors={selector})
+        assert browser_mod.has_visible_verification(page) is True
+
+
+def test_hidden_or_unrelated_verification_copy_does_not_block() -> None:
+    page = FakePage(available_texts={"安全验证", "验证错误,请重试", "测速"})
+    assert browser_mod.has_visible_verification(page) is False
+    assert browser_mod.find_speedtest_button(page) is not None
+
+
+def test_current_round_start_control_has_priority_over_navigation_text() -> None:
+    page = FakePage(visible_selectors={START_CONTROL})
+    assert browser_mod.click_speedtest_button(page) is True
+    assert page.clicked_texts == [START_CONTROL]
+
+
+def test_actual_missing_button_keeps_original_error(monkeypatch) -> None:
+    page = FakePage(available_texts=set())
+    manager = install_fake_playwright(monkeypatch, page)
+    result = browser_mod.run_speedtest_cn_browser_automation(BrowserAutomationOptions(timeout_seconds=0))
+    assert result.error == "未找到 speedtest.cn 测速按钮。"
+    assert page.clicked_texts == []
+    assert manager.playwright.chromium.browser.closed
+
+
+def assert_verification_result(result, page, manager) -> None:
+    assert result.error == browser_mod.VERIFICATION_REQUIRED_ERROR
+    assert "人工安全验证" in result.error
+    assert "未找到" not in result.error
+    assert result.download_mbps is None
+    assert result.raw_text is None
+    assert result.debug_screenshot_path is None
+    assert manager.playwright.chromium.headless_values == [True]
+    assert manager.playwright.chromium.browser.closed
+    assert manager.playwright.chromium.browser.context.closed
+
+
+def test_verification_at_navigation_stops_before_any_controls_or_raw_body(monkeypatch) -> None:
+    page = FakePage(visible_selectors={CAPTCHA_HEADER})
+    manager = install_fake_playwright(monkeypatch, page)
+    messages = []
+    result = browser_mod.run_speedtest_cn_browser_automation(BrowserAutomationOptions(timeout_seconds=0), progress_callback=messages.append)
+    assert_verification_result(result, page, manager)
+    assert page.clicked_texts == []
+    assert page.body_reads == 0
+    assert "已找到测速按钮" not in messages
+    assert "已点击测速按钮，正在测速..." not in messages
+
+
+def test_popup_helpers_never_click_controls_when_verification_is_visible() -> None:
+    page = FakePage(available_texts={"关闭", "不再提醒", "继续测速"}, visible_selectors={CAPTCHA_HEADER})
+    browser_mod.dismiss_common_overlays(page)
+    browser_mod.dismiss_speedtest_cn_prompts(page)
+    assert page.clicked_texts == []
+
+
+def test_verification_appearing_during_button_wait_is_not_reported_missing(monkeypatch) -> None:
+    page = FakePage()
+    manager = install_fake_playwright(monkeypatch, page)
+
+    def fail_find(current_page):
+        current_page.visible_selectors.add(CAPTCHA_HEADER)
+        return None
+
+    monkeypatch.setattr(browser_mod, "find_speedtest_button", fail_find)
+    result = browser_mod.run_speedtest_cn_browser_automation(BrowserAutomationOptions(timeout_seconds=0))
+    assert_verification_result(result, page, manager)
+    assert page.body_reads == 0
+
+
+def test_verification_appearing_after_start_is_not_polled_as_results(monkeypatch) -> None:
+    page = FakePage(["Download 10 Mbps\nUpload 2 Mbps\nPing 8 ms"])
+    manager = install_fake_playwright(monkeypatch, page)
+
+    class ChallengeOnClick:
+        def click(self, **kwargs):
+            page.visible_selectors.add(CAPTCHA_HEADER)
+
+    monkeypatch.setattr(browser_mod, "find_speedtest_button", lambda page: ChallengeOnClick())
+    result = browser_mod.run_speedtest_cn_browser_automation(BrowserAutomationOptions(timeout_seconds=0))
+    assert_verification_result(result, page, manager)
+    assert page.body_reads == 0
+
+
+def test_verification_appearing_while_polling_stops_without_completion(monkeypatch) -> None:
+    page = FakePage()
+    manager = install_fake_playwright(monkeypatch, page)
+
+    def partial_body():
+        page.visible_selectors.add(CAPTCHA_HEADER)
+        return "Ping 8 ms"
+
+    monkeypatch.setattr(page, "next_body_text", partial_body)
+    monkeypatch.setattr(browser_mod.time, "sleep", lambda seconds: None)
+    messages = []
+    result = browser_mod.run_speedtest_cn_browser_automation(
+        BrowserAutomationOptions(timeout_seconds=1), progress_callback=messages.append
+    )
+    assert_verification_result(result, page, manager)
+    assert "测速完成，正在生成结果..." not in messages
+
+
+def test_verification_intercepting_click_is_not_reported_as_generic_timeout(monkeypatch) -> None:
+    page = FakePage()
+    manager = install_fake_playwright(monkeypatch, page)
+
+    class BlockedClick:
+        def click(self, **kwargs):
+            page.visible_selectors.add(CAPTCHA_HEADER)
+            raise FakeTimeoutError("click intercepted")
+
+    monkeypatch.setattr(browser_mod, "find_speedtest_button", lambda page: BlockedClick())
+    result = browser_mod.run_speedtest_cn_browser_automation(BrowserAutomationOptions(timeout_seconds=0))
+    assert_verification_result(result, page, manager)

@@ -36,6 +36,14 @@ PLAYWRIGHT_INSTALL_HINT = (
     "pip install playwright\n"
     "playwright install chromium"
 )
+VERIFICATION_REQUIRED_ERROR = (
+    "speedtest.cn 页面要求人工安全验证（滑块/验证码），后台测速已停止。"
+    "请在浏览器中打开 speedtest.cn 完成网页测速。"
+)
+
+
+class PageVerificationRequired(Exception):
+    """The page is waiting for a person, not a missing speedtest button."""
 
 
 @dataclass(frozen=True)
@@ -132,11 +140,14 @@ def run_speedtest_cn_browser_attempt(
                     error=append_screenshot_path(error_message, screenshot_path),
                     debug_screenshot_path=screenshot_path,
                 )
+            check_page_verification(page)
             dismiss_common_overlays(page)
             dismiss_speedtest_cn_prompts(page)
+            check_page_verification(page)
             emit_progress(progress_callback, "已处理页面提示")
 
             speedtest_button = find_speedtest_button(page)
+            check_page_verification(page)
             if speedtest_button is None:
                 screenshot_path = save_debug_screenshot(page, options.debug_screenshot)
                 return SpeedtestCnResult(
@@ -148,10 +159,13 @@ def run_speedtest_cn_browser_attempt(
             speedtest_button.click(timeout=5_000)
             emit_progress(progress_callback, "已点击测速按钮，正在测速...")
             dismiss_speedtest_cn_prompts(page)
+            check_page_verification(page)
 
             deadline = time.monotonic() + max(0, options.timeout_seconds)
             while time.monotonic() < deadline:
+                check_page_verification(page)
                 last_text = get_body_text(page)
+                check_page_verification(page)
                 parsed = parse_speedtest_cn_text(last_text)
                 last_parse_error = parsed.error or last_parse_error
                 emit_result_field_progress(progress_callback, parsed, detected_fields)
@@ -171,9 +185,13 @@ def run_speedtest_cn_browser_attempt(
                 ),
                 debug_screenshot_path=screenshot_path,
             )
+    except PageVerificationRequired:
+        return SpeedtestCnResult(error=VERIFICATION_REQUIRED_ERROR)
     except KeyboardInterrupt:
         return SpeedtestCnResult(error="已取消 speedtest.cn browser automation。")
     except playwright_timeout_error as exc:
+        if has_visible_verification(page):
+            return SpeedtestCnResult(error=VERIFICATION_REQUIRED_ERROR)
         screenshot_path = save_debug_screenshot(page, options.debug_screenshot)
         return SpeedtestCnResult(
             raw_text=last_text,
@@ -181,6 +199,8 @@ def run_speedtest_cn_browser_attempt(
             debug_screenshot_path=screenshot_path,
         )
     except Exception as exc:
+        if has_visible_verification(page):
+            return SpeedtestCnResult(error=VERIFICATION_REQUIRED_ERROR)
         screenshot_path = save_debug_screenshot(page, options.debug_screenshot)
         return SpeedtestCnResult(
             raw_text=last_text,
@@ -258,6 +278,8 @@ def load_sync_playwright() -> tuple[Callable[..., Any] | None, type[Exception] |
 def dismiss_common_overlays(page: Any) -> None:
     """Best-effort close for ordinary popups, without bypassing CAPTCHA or risk controls."""
     for text in ("同意", "接受", "我知道了", "关闭", "跳过", "×"):
+        if has_visible_verification(page):
+            return
         try:
             page.get_by_text(text, exact=True).click(timeout=1_000)
         except Exception:
@@ -272,6 +294,8 @@ def dismiss_speedtest_cn_prompts(page: Any) -> None:
             lambda text=text: first_locator(page.locator(f"text={text}")),
         )
         for locator_factory in locator_factories:
+            if has_visible_verification(page):
+                return
             try:
                 locator_factory().click(timeout=2_000)
                 return
@@ -290,12 +314,16 @@ def grant_geolocation_permission(context: Any) -> None:
 def find_speedtest_button(page: Any) -> Any | None:
     """Find the first visible speedtest button from several DOM locator strategies."""
     locator_factories = (
+        # Current homepage uses a div, not a button; avoid navigation/ad text.
+        lambda: page.locator(".start-speed-circle:visible"),
         lambda: page.get_by_text("测速", exact=True),
         lambda: page.get_by_text("开始测速"),
         lambda: first_locator(page.locator("text=测速")),
         lambda: first_locator(page.locator("button").filter(has_text="测速")),
     )
     for locator_factory in locator_factories:
+        if has_visible_verification(page):
+            return None
         try:
             locator = locator_factory()
             locator.click(timeout=5_000, trial=True)
@@ -303,6 +331,28 @@ def find_speedtest_button(page: Any) -> Any | None:
         except Exception:
             continue
     return None
+
+
+def has_visible_verification(page: Any) -> bool:
+    """Recognize the observed page challenge without interacting with it."""
+    if page is None:
+        return False
+    for selector in (
+        ".tencent-captcha-dy__header-text:visible",
+        ".tencent-captcha-dy__footer-title:visible",
+    ):
+        try:
+            if first_locator(page.locator(selector)).is_visible():
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def check_page_verification(page: Any) -> None:
+    """Stop the attempt when its DOM is waiting for manual verification."""
+    if has_visible_verification(page):
+        raise PageVerificationRequired
 
 
 def click_speedtest_button(page: Any) -> bool:
