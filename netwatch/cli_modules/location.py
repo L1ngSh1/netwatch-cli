@@ -7,7 +7,6 @@ from rich.table import Table
 
 from netwatch.location.geolocation.device import DeviceLocationResult, run_browser_geolocation as _default_run_browser_geolocation
 from netwatch.location.models import PreciseLocationReport
-from netwatch.location.precise_location import run_precise_location_report as _default_run_precise_location_report
 from netwatch.network.info import (
     get_display_network_interfaces as _default_get_display_network_interfaces,
     get_preferred_physical_interface as _default_get_preferred_physical_interface,
@@ -50,6 +49,10 @@ def run_browser_geolocation(*args, **kwargs):
 
 
 def run_precise_location_report(*args, **kwargs):
+    # Only advanced item 13 consumes this implementation. Basic network info
+    # and cancelling the advanced confirmation must not import its geo chain.
+    from netwatch.location.precise_location import run_precise_location_report as _default_run_precise_location_report
+
     return cli_override(
         "run_precise_location_report",
         _default_run_precise_location_report,

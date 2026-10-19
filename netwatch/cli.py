@@ -145,10 +145,12 @@ def build_advanced_menu() -> Panel:
     """Build advanced feature menu."""
     menu = "\n".join(
         [
+            "[bold]测速操作[/bold]",
             "[bold cyan]1[/bold cyan]. 通用测速诊断（Ookla / LibreSpeed / Python fallback）",
             "[bold cyan]2[/bold cyan]. 指定 Ookla server id 测速",
             "[bold cyan]3[/bold cyan]. 按关键词筛选 Ookla 服务器测速",
             "[bold cyan]4[/bold cyan]. 按当前运营商/城市优选服务器",
+            "[bold]配置与诊断[/bold]",
             "[bold cyan]5[/bold cyan]. 保存最近一次成功测速服务器为默认",
             "[bold cyan]6[/bold cyan]. 清除默认测速服务器",
             "[bold cyan]7[/bold cyan]. 查看当前测速配置",
@@ -156,6 +158,7 @@ def build_advanced_menu() -> Panel:
             "[bold cyan]9[/bold cyan]. 显示测速后端信息",
             "[bold cyan]10[/bold cyan]. 显示 Ookla server selection details",
             "[bold cyan]11[/bold cyan]. LibreSpeed 自定义服务器列表测速",
+            "[bold]网页对照与定位实验[/bold]",
             "[bold cyan]12[/bold cyan]. 打开 speedtest.cn 网页对照测速",
             "[bold cyan]13[/bold cyan]. 实验功能：浏览器授权 + 离线精确行政区/附近街道定位",
             "[bold cyan]14[/bold cyan]. 返回主菜单",
@@ -169,14 +172,14 @@ def show_advanced_menu() -> None:
     while True:
         try:
             console.print(build_advanced_menu())
-            console.print("[yellow]通用测速诊断会依次尝试 official Ookla CLI、LibreSpeed CLI、Python speedtest-cli fallback。[/yellow]")
-            console.print("[yellow]该结果受测速服务器池、网络路径、代理/TUN 和服务器质量影响，不一定代表本地宽带最大值。[/yellow]")
             choice = Prompt.ask(
                 "请选择高级功能",
                 choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14"],
                 default="14",
             )
             if choice == "1":
+                console.print("[yellow]通用测速诊断会依次尝试 official Ookla CLI、LibreSpeed CLI、Python speedtest-cli fallback。[/yellow]")
+                console.print("[yellow]该结果受测速服务器池、网络路径、代理/TUN 和服务器质量影响，不一定代表本地宽带最大值。[/yellow]")
                 show_auto_speedtest()
             elif choice == "2":
                 show_speedtest_by_server_id()
