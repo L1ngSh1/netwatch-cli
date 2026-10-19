@@ -20,6 +20,14 @@ from unittest.mock import Mock, patch
 import webbrowser
 
 
+ADVANCED_MODULES = {
+    "netwatch.location.precise_location", "netwatch.location.admin",
+    "netwatch.location.admin.coord_transform", "netwatch.location.admin.china_admin_lookup",
+    "netwatch.location.roads", "netwatch.location.roads.nearby_roads",
+    "netwatch.location.admin.offline_boundary",
+}
+
+
 def verify(*, browser: bool, geo: bool) -> dict:
     import netwatch
     import requests
@@ -30,7 +38,7 @@ def verify(*, browser: bool, geo: bool) -> dict:
 
     package = Path(netwatch.__file__).resolve()
     assert package.is_relative_to(Path(sys.prefix).resolve()), f"not installed from wheel: {package}"
-    assert "netwatch.location.precise_location" not in sys.modules, "eager advanced orchestrator import"
+    assert not ADVANCED_MODULES.intersection(sys.modules), "eager advanced module import"
     assert (importlib.util.find_spec("playwright") is not None) == browser
     assert (importlib.util.find_spec("shapely") is not None) == geo
     assert importlib.util.find_spec("reverse_geocoder") is not None
@@ -53,7 +61,20 @@ def verify(*, browser: bool, geo: bool) -> dict:
         stack.enter_context(patch.object(cli, "console", Console(file=StringIO())))
         stack.enter_context(patch.object(cli.Prompt, "ask", return_value="8"))
         cli.main()
-        assert "netwatch.location.precise_location" not in sys.modules
+        assert not ADVANCED_MODULES.intersection(sys.modules)
+        from netwatch.network.proxy_probe import ExitIPInfo
+        with patch.object(location, "console", Console(file=StringIO())), \
+             patch.object(location, "get_preferred_physical_interface", return_value=None), \
+             patch.object(location, "get_display_network_interfaces", return_value=[]), \
+             patch.object(location, "get_default_gateway", return_value=None), \
+             patch.object(location, "probe_exit_ip", return_value=ExitIPInfo(ip=None, city=None, region=None, country=None, org=None, error="synthetic unavailable")), \
+             patch.object(location.Prompt, "ask", side_effect=["n", "n"]):
+            location.show_network_info()
+        assert not ADVANCED_MODULES.intersection(sys.modules)
+        with patch.object(location, "console", Console(file=StringIO())), \
+             patch.object(location.Prompt, "ask", return_value="n"):
+            location.show_precise_offline_location()
+        assert not ADVANCED_MODULES.intersection(sys.modules)
         result = SpeedtestCnResult(download_mbps=100, upload_mbps=20, ping_ms=8)
         backend = Mock(return_value=result)
         stack.enter_context(patch.object(speedtest, "console", Console(file=StringIO())))
@@ -64,16 +85,18 @@ def verify(*, browser: bool, geo: bool) -> dict:
         backend.assert_called_once()
         options = backend.call_args.args[0]
         assert options.headless and not options.debug_screenshot
-        assert "netwatch.location.precise_location" not in sys.modules
+        assert not ADVANCED_MODULES.intersection(sys.modules)
         from netwatch.location import precise_location
         from netwatch.location.geolocation.device import DeviceLocationResult
         stack.enter_context(patch.object(precise_location, "run_browser_geolocation", return_value=DeviceLocationResult(error="synthetic permission denied")))
         report = location.run_precise_location_report(timeout_seconds=1)
         assert "synthetic permission denied" in report.warnings
+        assert ADVANCED_MODULES <= set(sys.modules)
         assert not events
     return {"platform": platform.system(), "python": platform.python_version(), "prefix": sys.prefix,
             "installed_package": str(package), "version": importlib.metadata.version("netwatch-cli"),
-            "browser_extra": browser, "geo_extra": geo, "advanced_import_lazy": True,
+            "browser_extra": browser, "geo_extra": geo, "advanced_import_lazy": True, "advanced_module_counts": [0, 7],
+            "basic_info_mock": "PASS", "advanced_cancel": "PASS",
             "main_exit": "PASS", "main4_mock": "PASS", "advanced_domain_mock": "PASS",
             "unexpected_external_io": events}
 

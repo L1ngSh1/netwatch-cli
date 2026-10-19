@@ -2,7 +2,7 @@
 
 日期：2026-10-16（Asia/Shanghai）
 
-状态：2026-10-19 用户要求继续完整推进至 P6，并同意独立测试分支提交、推送和完整 CI。P0/P1 保留，P2–P5 本地验收完成，P6 平台/安装包验收进行中。当前事实与证据统一见 [current-status.md](../handoff/current-status.md)。
+状态：2026-10-19 用户要求继续完整推进至 P6，并同意独立测试分支提交、推送和完整 CI。P0/P1 保留，P2–P6 已逐阶段验收，五组合 CI 与隔离安装通过；本轮按完整推进授权连续实施，各阶段分别保留证据。当前事实与证据统一见 [current-status.md](../handoff/current-status.md)。
 
 阶段记录：[P0 验收](2026-10-16-lightweight-p0-results.md)、[P1 重修](2026-10-18-lightweight-p1-results.md)。
 
