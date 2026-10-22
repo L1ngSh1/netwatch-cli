@@ -7,6 +7,7 @@ from netwatch.speedtest.analysis import (
     detect_vpn_tun,
     get_analysis_summary,
     get_result_confidence,
+    get_result_diagnostic_issues,
 )
 from netwatch.core.config import get_preferred_librespeed
 from netwatch.network.info import get_preferred_physical_interface
@@ -151,6 +152,17 @@ def list_speedtest_servers() -> list[dict]:
     return [{"error": "当前后端无法获取服务器列表。建议使用“带宽测速”自动模式，或安装官方 Ookla CLI。"}]
 
 
+def list_ookla_speedtest_servers() -> list[dict]:
+    """List official Ookla candidates without borrowing another backend's IDs."""
+    if not ookla_cli.is_available():
+        return [{"error": (
+            "关键词及运营商/城市选服需要官方 Ookla CLI。\n"
+            f"{ookla_cli.get_install_hint()}\n"
+            "也可返回高级功能，手动选择通用测速诊断。"
+        )}]
+    return ookla_cli.list_servers()
+
+
 def filter_servers_by_keyword(servers: list[dict], keyword: str, limit: int | None = None) -> list[dict]:
     """Filter Ookla servers by name, location, country, or host."""
     normalized_keyword = keyword.strip().lower()
@@ -217,6 +229,8 @@ def build_isp_preset_keywords(org: str = "", city: str = "", region: str = "") -
 
 def get_speedtest_quality_warnings(result: SpeedtestResult) -> list[str]:
     """Return human-readable quality warning reasons for suspicious speedtest results."""
+    if get_result_diagnostic_issues(result):
+        return []
     reasons: list[str] = []
     if result.ping_ms is not None and result.ping_ms > 80:
         reasons.append("ping > 80ms")
@@ -231,6 +245,8 @@ def get_speedtest_quality_warnings(result: SpeedtestResult) -> list[str]:
 
 def get_speedtest_quality_details(result: SpeedtestResult) -> list[dict]:
     """Return specific quality warnings with actionable advice."""
+    if get_result_diagnostic_issues(result):
+        return []
     details: list[dict] = []
 
     if result.ping_ms is not None and result.ping_ms > 80:
@@ -277,11 +293,7 @@ def get_speedtest_quality_details(result: SpeedtestResult) -> list[dict]:
     if isinstance(raw, dict):
         interface = raw.get("interface")
         if isinstance(interface, dict):
-            name = str(interface.get("name") or "").lower()
-            internal_ip = str(interface.get("internalIp") or "")
-            is_virtual_iface = get_backend().classify_interface(name, internal_ip, None) in {"vpn", "virtual"}
-            is_virtual_ip = internal_ip.startswith("198.18.")
-            if is_virtual_iface or is_virtual_ip:
+            if detect_vpn_tun(result):
                 details.append({
                     "condition": f"interface={interface.get('name')}, internalIp={interface.get('internalIp')}",
                     "advice": [
@@ -306,7 +318,7 @@ def summarize_speedtest_raw(result: SpeedtestResult) -> dict[str, str]:
         "jitter": f"{result.jitter_ms:.2f} ms" if result.jitter_ms is not None else "-",
         "packet_loss": f"{result.packet_loss:.2f}%" if result.packet_loss is not None else "-",
         "confidence": confidence,
-        "vpn_tun": "yes" if detect_vpn_tun(result) else "no",
+        "vpn_tun": path_summary["vpn_tun"],
         "current_exit": path_summary["current_exit"],
         "speedtest_server": path_summary["speedtest_server"],
         "analysis_summary": get_analysis_summary(result),

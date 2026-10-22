@@ -1,3 +1,5 @@
+> 历史交接记录。当前状态、复验命令和未验证项统一见 [current-status.md](current-status.md)。
+
 # Handoff to DeepSeek
 
 ## 1. 当前项目状态

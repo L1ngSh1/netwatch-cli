@@ -4,87 +4,34 @@ from __future__ import annotations
 
 import sys
 
-from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
-from rich.prompt import Confirm, IntPrompt, Prompt
+from rich.prompt import Prompt
 from rich.table import Table
 
-from netwatch.location.geolocation.device import DeviceLocationResult, run_browser_geolocation
-from netwatch.network.info import (
-    NetworkCandidate,
-    get_display_network_interfaces,
-    get_lan_scan_candidates,
-    get_preferred_physical_interface,
-)
-from netwatch.network.scanner import scan_network
-from netwatch.network.router import (
-    NetworkDevice,
-    RouterApiError,
-    RouterDevice,
-    extract_xiaomi_stok,
-    fetch_xiaomi_device_list,
-    get_default_gateway,
-    mask_stok,
-    merge_devices,
-    router_devices_to_network_devices,
-    scan_results_to_network_devices,
-)
 from netwatch.speedtest.speed import format_speed, sample_network_speed
 from netwatch.core.banner import print_banner
-from netwatch.cli_modules.lan import (
-    build_lan_discovery_menu,
-    choose_lan_scan_candidate,
-    print_network_devices,
-    run_lan_scan,
-    show_enhanced_lan_discovery,
-    show_lan_discovery_menu,
-    show_router_only_device_sync,
-)
-from netwatch.cli_modules.location import (
-    print_device_location_result,
-    print_precise_location_report,
-    show_network_info,
-    show_precise_offline_location,
-)
-from netwatch.cli_modules.router import (
-    choose_router_admin_url,
-    choose_router_sync_method,
-    normalize_router_admin_url,
-    print_missing_stok_guidance,
-    prompt_and_fetch_xiaomi_redmi_stok_devices,
-    prompt_and_fetch_xiaomi_router_devices,
-    show_generic_luci_sync_notice,
-    show_open_router_admin,
-)
+from netwatch.cli_modules.lan import show_lan_discovery_menu
+from netwatch.cli_modules.location import show_network_info, show_precise_offline_location
+from netwatch.cli_modules.router import show_open_router_admin
 from netwatch.cli_modules.speedtest import (
     open_speedtest_cn_reference,
-    print_speedtest_result,
-    run_best_speedtest,
-    run_librespeed_custom_speedtest,
-    run_speedtest_with_status,
-    run_speedtest_cn_browser_automation,
     show_auto_speedtest,
     show_clear_preferred_speedtest,
     show_isp_city_preset_speedtest,
     show_keyword_speedtest,
     show_last_speedtest_raw_summary,
     show_librespeed_custom_menu,
-    show_librespeed_local_json_speedtest,
-    show_librespeed_server_json_speedtest,
     show_ookla_selection_details,
     show_proxy_exit_speedtest,
     show_save_last_speedtest_server,
     show_speedtest_backend_info,
     show_speedtest_by_server_id,
-    show_speedtest_cn_browser_automation,
     show_speedtest_cn_main,
     show_speedtest_config,
-    format_speedtest_cn_label,
 )
-from netwatch.network.proxy_probe import probe_exit_ip
 
-console = Console()
+from netwatch.cli_modules.common import console
 
 
 def _is_interactive_session() -> bool:
@@ -145,10 +92,12 @@ def build_advanced_menu() -> Panel:
     """Build advanced feature menu."""
     menu = "\n".join(
         [
+            "[bold]测速操作[/bold]",
             "[bold cyan]1[/bold cyan]. 通用测速诊断（Ookla / LibreSpeed / Python fallback）",
             "[bold cyan]2[/bold cyan]. 指定 Ookla server id 测速",
             "[bold cyan]3[/bold cyan]. 按关键词筛选 Ookla 服务器测速",
             "[bold cyan]4[/bold cyan]. 按当前运营商/城市优选服务器",
+            "[bold]配置与诊断[/bold]",
             "[bold cyan]5[/bold cyan]. 保存最近一次成功测速服务器为默认",
             "[bold cyan]6[/bold cyan]. 清除默认测速服务器",
             "[bold cyan]7[/bold cyan]. 查看当前测速配置",
@@ -156,6 +105,7 @@ def build_advanced_menu() -> Panel:
             "[bold cyan]9[/bold cyan]. 显示测速后端信息",
             "[bold cyan]10[/bold cyan]. 显示 Ookla server selection details",
             "[bold cyan]11[/bold cyan]. LibreSpeed 自定义服务器列表测速",
+            "[bold]网页对照与定位实验[/bold]",
             "[bold cyan]12[/bold cyan]. 打开 speedtest.cn 网页对照测速",
             "[bold cyan]13[/bold cyan]. 实验功能：浏览器授权 + 离线精确行政区/附近街道定位",
             "[bold cyan]14[/bold cyan]. 返回主菜单",
@@ -169,14 +119,14 @@ def show_advanced_menu() -> None:
     while True:
         try:
             console.print(build_advanced_menu())
-            console.print("[yellow]通用测速诊断会依次尝试 official Ookla CLI、LibreSpeed CLI、Python speedtest-cli fallback。[/yellow]")
-            console.print("[yellow]该结果受测速服务器池、网络路径、代理/TUN 和服务器质量影响，不一定代表本地宽带最大值。[/yellow]")
             choice = Prompt.ask(
                 "请选择高级功能",
                 choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14"],
                 default="14",
             )
             if choice == "1":
+                console.print("[yellow]通用测速诊断会依次尝试 official Ookla CLI、LibreSpeed CLI、Python speedtest-cli fallback。[/yellow]")
+                console.print("[yellow]该结果受测速服务器池、网络路径、代理/TUN 和服务器质量影响，不一定代表本地宽带最大值。[/yellow]")
                 show_auto_speedtest()
             elif choice == "2":
                 show_speedtest_by_server_id()

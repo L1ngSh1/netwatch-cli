@@ -51,7 +51,7 @@ pip install -e ".[geo]"
 数据来源：
 
 - [AreaCity-JsSpider-StatsGov](https://github.com/xiangyuecn/AreaCity-JsSpider-StatsGov)
-- `raw/ok_data_level3.csv`：省/市/区三级行政区划层级数据。
+- `scripts/geo/data/ok_data_level3.csv`（仓库开发输入，不随运行时 wheel 安装）：省/市/区三级行政区划层级数据。
 - 构建时如 `ok_data_level3.csv` 不含坐标，脚本会临时读取 AreaCity 的 `ok_geo.csv.7z` 来提取中心点，但不会把大边界包内置到项目。
 
 许可证：AreaCity-JsSpider-StatsGov 使用 MIT license。

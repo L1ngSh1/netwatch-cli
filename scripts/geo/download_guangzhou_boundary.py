@@ -15,7 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from netwatch.location.admin.boundary_tools import (
+from scripts.geo.boundary_tools import (
     BoundaryProbeResult,
     BoundaryProbeSingleResult,
     BoundaryValidationResult,

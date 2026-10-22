@@ -1,3 +1,5 @@
+> 历史交接记录。当前状态、复验命令和未验证项统一见 [current-status.md](current-status.md)。
+
 # netwatch-cli Claude Code 交接文档
 
 ## 1. 项目概览

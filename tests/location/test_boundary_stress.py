@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from netwatch.location.admin.boundary_stress import (
+from scripts.geo.boundary_stress import (
     generate_boundary_points,
     generate_epsilon_points_around,
     generate_representative_points,
@@ -18,7 +17,7 @@ from netwatch.location.admin.boundary_stress import (
     run_boundary_stress,
     run_known_point_probes,
 )
-from netwatch.location.admin.boundary_tools import validate_boundary_geojson
+from scripts.geo.boundary_tools import validate_boundary_geojson
 from netwatch.location.admin.offline_boundary import DEFAULT_BOUNDARY_GEOJSON, load_boundary_dataset, locate_admin_by_point
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -118,7 +117,10 @@ def test_malformed_validation_warning() -> None:
 def test_whole_only_validation_warning() -> None:
     result = validate_boundary_geojson(FIXTURE_DIR / "guangzhou_whole_only.geojson")
 
-    assert result.load_result == "ok"
+    if HAS_SHAPELY:
+        assert result.load_result == "ok"
+    else:
+        assert "requires shapely" in result.load_result
     assert is_whole_city_boundary(result)
     assert any("whole-city" in warning for warning in result.warnings)
 
@@ -154,22 +156,21 @@ def test_coord_system_auto_compare_does_not_crash(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(not HAS_SHAPELY, reason="shapely not installed")
-def test_stress_script_refuses_whole_only_boundary() -> None:
-    completed = subprocess.run(
+def test_stress_script_refuses_whole_only_boundary(monkeypatch, capsys) -> None:
+    from scripts.geo import test_guangzhou_boundary_stress as script
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
         [
-            sys.executable,
             "scripts/geo/test_guangzhou_boundary_stress.py",
             "--boundary",
             str(FIXTURE_DIR / "guangzhou_whole_only.geojson"),
         ],
-        cwd=Path.cwd(),
-        text=True,
-        capture_output=True,
-        check=False,
     )
 
-    assert completed.returncode == 1
-    assert "not a Guangzhou child-district boundary" in completed.stderr
+    assert script.main() == 1
+    assert "not a Guangzhou child-district boundary" in capsys.readouterr().err
 
 
 def _write_known_regression_boundary(tmp_path: Path) -> Path:

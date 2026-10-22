@@ -14,6 +14,7 @@ from netwatch.speedtest.analysis import (
     build_network_path_summary,
     detect_vpn_tun,
     get_result_confidence,
+    get_result_diagnostic_issues,
 )
 from netwatch.core.config import (
     clear_preferred_librespeed,
@@ -24,13 +25,13 @@ from netwatch.core.config import (
     save_preferred_speedtest,
     set_preferred_librespeed,
 )
-from netwatch.network.info import get_preferred_physical_interface as _default_get_preferred_physical_interface
-from netwatch.network.proxy_probe import probe_exit_ip as _default_probe_exit_ip
+from netwatch.network.info import get_preferred_physical_interface
+from netwatch.network.proxy_probe import probe_exit_ip
 from netwatch.speedtest.speedtest_cn import SpeedtestCnResult, is_valid_speedtest_cn_label
 from netwatch.speedtest.backends.ookla_cli import get_install_hint as get_ookla_install_hint
 from netwatch.speedtest.speedtest_cn_browser import (
     BrowserAutomationOptions,
-    run_speedtest_cn_browser_automation as _default_run_speedtest_cn_browser_automation,
+    run_speedtest_cn_browser_automation,
 )
 from netwatch.speedtest.runner import (
     SpeedtestResult,
@@ -40,65 +41,25 @@ from netwatch.speedtest.runner import (
     get_last_successful_speedtest_result,
     get_selection_details,
     get_speedtest_quality_details,
-    list_speedtest_servers,
-    run_best_speedtest as _default_run_best_speedtest,
+    list_ookla_speedtest_servers,
+    run_best_speedtest,
     run_configured_speedtest,
-    run_librespeed_custom_speedtest as _default_run_librespeed_custom_speedtest,
+    run_librespeed_custom_speedtest,
     run_speedtest_with_backend,
     show_backend_info,
     summarize_speedtest_raw,
 )
-from netwatch.cli_modules.common import cli_override, console
+from netwatch.cli_modules.common import console
 
 SPEEDTEST_STATUS_MESSAGES = (
-    "正在启动测速后端...",
-    "正在连接测速服务器...",
-    "正在执行下载测速...",
-    "正在执行上传测速...",
-    "测速可能需要 10~30 秒...",
+    "正在调用测速后端，请稍候...",
 )
 
 
-def get_preferred_physical_interface():
-    return cli_override(
-        "get_preferred_physical_interface",
-        _default_get_preferred_physical_interface,
-        current=get_preferred_physical_interface,
-    )()
-
-
-def probe_exit_ip():
-    return cli_override("probe_exit_ip", _default_probe_exit_ip, current=probe_exit_ip)()
-
-
-def run_best_speedtest(*args, **kwargs):
-    return cli_override("run_best_speedtest", _default_run_best_speedtest, current=run_best_speedtest)(*args, **kwargs)
-
-
-def run_librespeed_custom_speedtest(*args, **kwargs):
-    return cli_override(
-        "run_librespeed_custom_speedtest",
-        _default_run_librespeed_custom_speedtest,
-        current=run_librespeed_custom_speedtest,
-    )(*args, **kwargs)
-
-
-def run_speedtest_cn_browser_automation(*args, **kwargs):
-    return cli_override(
-        "run_speedtest_cn_browser_automation",
-        _default_run_speedtest_cn_browser_automation,
-        current=run_speedtest_cn_browser_automation,
-    )(*args, **kwargs)
-
-
 def _print_speedtest_result(result: SpeedtestResult, detailed: bool = True) -> None:
-    printer = cli_override("print_speedtest_result", print_speedtest_result, current=print_speedtest_result)
-    if printer is print_speedtest_result:
-        printer(result, detailed=detailed)
-    elif detailed:
-        printer(result)
-    else:
-        printer(result, detailed=detailed)
+    print_speedtest_result(result, detailed=detailed)
+
+
 def show_auto_speedtest() -> None:
     """Run the best available bandwidth test backend."""
     console.print("[dim]带宽测速会连接公网测速服务器，可能需要几十秒。[/dim]")
@@ -179,8 +140,17 @@ def run_speedtest_with_status(task) -> SpeedtestResult | None:
 def print_speedtest_result(result: SpeedtestResult, detailed: bool = True) -> None:
     """Print a unified speedtest result. detailed=True includes quality warnings + path analysis."""
     print_speedtest_result_table(result)
-    if detailed:
+    if detailed and not get_result_diagnostic_issues(result, require_measurements=True):
         print_speedtest_results_extra(result)
+
+
+def _print_unavailable_diagnostics(result: SpeedtestResult, *, require_measurements: bool = False) -> bool:
+    """Display unavailable diagnostics once at a public display entry point."""
+    issues = get_result_diagnostic_issues(result, require_measurements=require_measurements)
+    if not issues:
+        return False
+    console.print("[yellow]诊断不可用：" + "；".join(issues) + "[/yellow]")
+    return True
 
 
 def print_speedtest_result_table(result: SpeedtestResult) -> None:
@@ -190,6 +160,8 @@ def print_speedtest_result_table(result: SpeedtestResult) -> None:
         if result.backend == "none" or "Official Ookla CLI is not installed" in result.error:
             console.print("[yellow]推荐安装官方 Ookla CLI：[/yellow]")
             console.print(f"[bold]{get_ookla_install_hint()}[/bold]")
+        return
+    if _print_unavailable_diagnostics(result, require_measurements=True):
         return
 
     table = Table(title="Speedtest 测速结果")
@@ -219,12 +191,17 @@ def print_speedtest_result_table(result: SpeedtestResult) -> None:
 
 def print_speedtest_results_extra(result: SpeedtestResult) -> None:
     """Print detailed speedtest diagnostics: quality warnings and path analysis."""
-    print_speedtest_quality_warning(result)
+    if _print_unavailable_diagnostics(result):
+        return
+    if not get_result_diagnostic_issues(result, require_measurements=True):
+        print_speedtest_quality_warning(result)
     print_speedtest_path_analysis(result)
 
 
 def print_speedtest_quality_warning(result: SpeedtestResult) -> None:
     """Print speedtest quality warning with cause-specific actionable advice."""
+    if _print_unavailable_diagnostics(result, require_measurements=True):
+        return
     details = get_speedtest_quality_details(result)
     if not details:
         return
@@ -237,12 +214,20 @@ def print_speedtest_quality_warning(result: SpeedtestResult) -> None:
 
 def print_speedtest_path_analysis(result: SpeedtestResult) -> None:
     """Print speedtest confidence and network path analysis."""
+    if _print_unavailable_diagnostics(result):
+        return
     confidence, reasons = get_result_confidence(result)
     console.print(f"[bold]Result confidence:[/bold] {confidence}")
     for reason in reasons:
         console.print(f"[dim]- {reason}[/dim]")
 
     summary = build_network_path_summary(result)
+    if get_result_diagnostic_issues(result, require_measurements=True):
+        console.print("[dim]接口/节点信息（无测量结论）：[/dim]")
+        console.print(f"- 当前出口：{summary['current_exit']}")
+        console.print(f"- 测速节点：{summary['speedtest_server']}")
+        console.print(f"- VPN/TUN 线索：{summary['vpn_tun']}")
+        return
     console.print("[bold]网络路径分析：[/bold]")
     console.print(f"- 当前出口：{summary['current_exit']}")
     console.print(f"- 测速节点：{summary['speedtest_server']}")
@@ -310,6 +295,8 @@ def show_proxy_exit_speedtest() -> None:
         console.print(f"[red]当前出口测速失败：{compact_error(result.error)}[/red]")
         console.print("[yellow]可尝试：关闭/切换代理，或使用高级功能里的通用测速诊断。[/yellow]")
         return
+    if _print_unavailable_diagnostics(result, require_measurements=True):
+        return
 
     console.print("[dim]测速后端已返回结果，正在整理...[/dim]")
     time.sleep(0.3)
@@ -329,10 +316,12 @@ def show_proxy_exit_speedtest() -> None:
 
 def print_proxy_exit_judgment(result: SpeedtestResult) -> None:
     """Print a one-line judgment for the proxy exit speedtest result."""
+    if _print_unavailable_diagnostics(result, require_measurements=True):
+        return
     if detect_vpn_tun(result):
         console.print("[yellow]检测到当前可能经过代理/TUN，结果更可能代表代理出口质量。[/yellow]")
     else:
-        console.print("[yellow]未检测到明显 TUN/VPN，结果更接近当前直连出口质量。[/yellow]")
+        console.print("[yellow]未检测到明显 TUN/VPN，仍未证实物理直连。[/yellow]")
     console.print("[dim]当前测速代表当前 CLI 出口路径，不一定代表本地宽带裸连质量。[/dim]")
 
 
@@ -375,20 +364,32 @@ def show_ookla_selection_details() -> None:
 
 def show_keyword_speedtest() -> None:
     """Filter Ookla servers by keyword and test selected candidates."""
-    keyword = Prompt.ask("请输入服务器关键词，例如 Guangzhou / Guangdong / China Mobile / Hong Kong").strip()
+    try:
+        keyword = Prompt.ask("请输入服务器关键词，例如 Guangzhou / Guangdong / China Mobile / Hong Kong").strip()
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]已取消关键词选服，返回菜单。[/yellow]")
+        return
     if not keyword:
         console.print("[yellow]关键词不能为空。[/yellow]")
         return
     run_keyword_speedtest(keyword)
 
 
-def run_keyword_speedtest(keyword: str) -> None:
-    """Run a server keyword speedtest flow."""
-    servers = list_speedtest_servers()
+def load_ookla_selection_servers() -> list[dict]:
+    """Present list errors; availability and backend identity belong to the runner."""
+    servers = list_ookla_speedtest_servers()
     if not servers or servers[0].get("error"):
-        console.print("[yellow]当前后端无法获取服务器列表。建议使用“带宽测速”自动模式，或安装官方 Ookla CLI。[/yellow]")
+        console.print("[yellow]未能获取官方 Ookla 服务器列表。[/yellow]")
         if servers:
             console.print(f"[dim]{servers[0].get('error')}[/dim]")
+        return []
+    return servers
+
+
+def run_keyword_speedtest(keyword: str) -> None:
+    """Run a server keyword speedtest flow."""
+    servers = load_ookla_selection_servers()
+    if not servers:
         return
 
     matches = filter_servers_by_keyword(servers, keyword, limit=10)
@@ -397,17 +398,21 @@ def run_keyword_speedtest(keyword: str) -> None:
         return
 
     print_server_matches(matches, title=f"关键词匹配服务器：{keyword}")
-    selection = Prompt.ask("请输入要测速的 server id，或输入 auto 自动测试前 3 个", default="auto").strip()
-    interface = get_speedtest_interface_name()
+    try:
+        selection = Prompt.ask("请输入要测速的 server id，或输入 auto 自动测试前 3 个", default="auto").strip()
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]已取消关键词选服，返回菜单。[/yellow]")
+        return
 
     if selection.lower() == "auto":
-        auto_test_keyword_servers(matches[:3], interface=interface)
+        auto_test_keyword_servers(matches[:3], interface=get_speedtest_interface_name())
         return
 
     valid_ids = {str(server.get("id")) for server in matches if server.get("id")}
     if selection not in valid_ids:
         console.print("[yellow]输入的 server id 不在当前匹配列表中。[/yellow]")
         return
+    interface = get_speedtest_interface_name()
     result = run_speedtest_with_status(lambda: run_speedtest_with_backend("official-ookla-cli", server_id=selection, interface=interface))
     if result is None:
         return
@@ -418,17 +423,15 @@ def run_keyword_speedtest(keyword: str) -> None:
 
 def show_isp_city_preset_speedtest() -> None:
     """Try keyword presets based on current ISP and city."""
+    servers = load_ookla_selection_servers()
+    if not servers:
+        return
     info = probe_exit_ip()
     keywords = build_isp_preset_keywords(
         org=info.org or "",
         city=info.city or "",
         region=info.region or "",
     )
-
-    servers = list_speedtest_servers()
-    if not servers or servers[0].get("error"):
-        console.print("[yellow]当前后端无法获取服务器列表。建议手动带宽测速或安装官方 Ookla CLI。[/yellow]")
-        return
 
     for keyword in keywords:
         if keyword.lower() == "hong kong":

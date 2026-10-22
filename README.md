@@ -2,6 +2,8 @@
 
 `netwatch-cli` 是一个轻量、交互式的命令行网络状态工具，用于查看本机网络、局域网设备、当前公网出口和测速结果。它面向日常排障：快速知道“我现在连在哪、出口在哪、测速走的是哪条路径”。
 
+当前工程验收与暂留问题见 [唯一交接状态](docs/handoff/current-status.md)。
+
 ## 功能
 
 - 实时网卡上传/下载流量。
@@ -366,5 +368,5 @@ netwatch-cli/
 ## 数据与许可证
 
 - AreaCity-JsSpider-StatsGov 使用 MIT license。
-- 本项目当前未包含独立 `LICENSE` 文件，项目许可证待补充。
+- 项目代码使用 [MIT License](LICENSE)；数据来源与适用条款仍按对应数据说明处理。
 - 不要把 `ok_geo.csv` 或 `ok_geo.csv.7z` 放入仓库；运行时只需要轻量 CSV。

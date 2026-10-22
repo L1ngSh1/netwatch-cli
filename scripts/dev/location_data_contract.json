@@ -1,0 +1,24 @@
+{
+  "baseline_commit": "e5e25724893b65520b26f23b37d7a307b3061513",
+  "description": "Fixed runtime location data from the P6 baseline; update only with an explicit data-change review.",
+  "files": {
+    "netwatch/location/data/china_district_centers.csv": "c6b2f0893e15aaf18e652efbfb5e4814e6e9ec7087315fa10cd6e6a9ab74bc19",
+    "netwatch/location/data/boundaries/china_districts.sample.geojson": "cd9bd665ec0c3382083b9bcabf4c0338c76baeda4f1ade92c072f9776a984895",
+    "netwatch/location/data/roads/roads.sample.geojson": "a9bc341420dd7be326382ad0b4e2dd9ac45890ccc61d05a9a2bd1c49847a44ff"
+  },
+  "center_probe": {
+    "longitude": 116.416334,
+    "latitude": 39.928359,
+    "max_km": 1.0,
+    "record_count": 2851,
+    "expected": {
+      "country": "CN",
+      "province": "北京市",
+      "city": "北京市",
+      "district": "东城区",
+      "adcode": "110101",
+      "distance_km": 0.0,
+      "source": "offline_china_district_centers"
+    }
+  }
+}

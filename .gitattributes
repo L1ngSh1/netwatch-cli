@@ -1,0 +1,3 @@
+* text=auto eol=lf
+# Preserve the generated runtime CSV byte-for-byte across all checkouts.
+netwatch/location/data/china_district_centers.csv -text
