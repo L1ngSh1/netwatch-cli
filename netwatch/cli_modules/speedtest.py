@@ -52,11 +52,7 @@ from netwatch.speedtest.runner import (
 from netwatch.cli_modules.common import console
 
 SPEEDTEST_STATUS_MESSAGES = (
-    "正在启动测速后端...",
-    "正在连接测速服务器...",
-    "正在执行下载测速...",
-    "正在执行上传测速...",
-    "测速可能需要 10~30 秒...",
+    "正在调用测速后端，请稍候...",
 )
 
 
