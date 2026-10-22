@@ -11,17 +11,18 @@ from pathlib import Path
 import zipfile
 
 BASE_REQUIRES = {"psutil>=5.9", "requests>=2.31", "rich>=13.0", "speedtest-cli>=2.1", "reverse-geocoder>=1.5.1"}
-REQUIRED_DATA = {
-    "netwatch/location/data/china_district_centers.csv",
-    "netwatch/location/data/boundaries/china_districts.sample.geojson",
-    "netwatch/location/data/roads/roads.sample.geojson",
-}
+DATA_CONTRACT = json.loads(Path(__file__).with_name("location_data_contract.json").read_text(encoding="utf-8"))
+REQUIRED_DATA = set(DATA_CONTRACT["files"])
 
 
 def inspect_wheel(path: Path) -> dict:
     with zipfile.ZipFile(path) as archive:
-        names = set(archive.namelist())
+        members = archive.namelist()
+        names = set(members)
         assert REQUIRED_DATA <= names, "missing runtime location data"
+        assert all(members.count(name) == 1 for name in REQUIRED_DATA), "duplicate runtime location data"
+        data_sha256 = {name: hashlib.sha256(archive.read(name)).hexdigest() for name in sorted(REQUIRED_DATA)}
+        assert data_sha256 == DATA_CONTRACT["files"], "runtime location data checksum mismatch"
         assert not any(".." in Path(name).parts or "__pycache__" in name or name.endswith(".pyc") for name in names)
         assert not any(name.startswith(("scripts/", "tests/")) or "/data/raw/" in name or name.endswith(("/boundary_tools.py", "/boundary_stress.py")) for name in names), "developer assets leaked into wheel"
         metadata_name = next(n for n in names if n.endswith(".dist-info/METADATA"))
@@ -36,7 +37,7 @@ def inspect_wheel(path: Path) -> dict:
             "compressed_bytes": path.stat().st_size,
             "uncompressed_runtime_bytes": sum(len(archive.read(n)) for n in names if n.startswith("netwatch/")),
             "requires_dist": sorted(requires),
-            "data_sha256": {n: hashlib.sha256(archive.read(n)).hexdigest() for n in sorted(REQUIRED_DATA)},
+            "data_sha256": data_sha256,
             "developer_assets_absent": True,
         }
 
