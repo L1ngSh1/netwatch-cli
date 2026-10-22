@@ -2,7 +2,7 @@ name: Engineering acceptance
 
 on:
   push:
-    branches: [main, codex/lightweight-p6-validation]
+    branches: [main, codex/lightweight-p6-validation, codex/post-p6-cohesion]
   pull_request:
   workflow_dispatch:
 
@@ -115,6 +115,15 @@ jobs:
               # Explicit install acceptance only; pytest never launches a browser.
               subprocess.check_call([str(python), '-m', 'playwright', 'install', 'chromium'])
               subprocess.check_call([str(python), '-I', 'scripts/dev/verify_browser_runtime.py', '--output', 'artifacts/browser.json'])
+          if os.environ['EXPECT_BROWSER'] == 'yes':
+              # Candidate-only experiment: the user's default install is unchanged.
+              # Current Playwright supports this flag; the allowed 1.44 minimum does not.
+              shell_env = dict(os.environ, PLAYWRIGHT_BROWSERS_PATH=str(Path(os.environ['RUNNER_TEMP']) / 'netwatch-only-shell'))
+              install = [str(python), '-m', 'playwright', 'install', '--only-shell', 'chromium']
+              if sys.platform == 'linux':
+                  install.append('--with-deps')
+              subprocess.check_call(install, env=shell_env)
+              subprocess.check_call([str(python), '-I', 'scripts/dev/verify_browser_runtime.py', '--require-only-shell', '--output', 'artifacts/browser-only-shell.json'], env=shell_env)
           PY
       - name: Retain verification artifacts
         if: always()
