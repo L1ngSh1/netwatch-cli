@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import math
 from typing import Any
 
@@ -12,6 +13,7 @@ CONFIDENCE_HIGH = "HIGH"
 CONFIDENCE_MEDIUM = "MEDIUM"
 CONFIDENCE_LOW = "LOW"
 CONFIDENCE_UNKNOWN = "UNKNOWN"
+_BENCHMARK_NETWORK = ipaddress.ip_network("198.18.0.0/15")
 
 _MEASUREMENT_FIELDS = (
     "ping_ms", "jitter_ms", "packet_loss", "download_mbps",
@@ -70,7 +72,7 @@ def analyze_speedtest_consistency(result: SpeedtestResult) -> list[str]:
             messages.append("接口信息显示 TUN/VPN 虚拟网卡；没有可用测量，测量质量未知。")
         else:
             messages.append(
-                "当前测速经过 TUN/VPN 虚拟网卡。测速结果代表当前代理出口路径，"
+                "检测到 TUN/VPN 虚拟网卡线索；当前测速可能经过代理出口路径，"
                 "而不一定代表本地宽带裸连质量。"
             )
 
@@ -133,7 +135,7 @@ def build_network_path_summary(result: SpeedtestResult) -> dict[str, str]:
         "vpn_tun": "unknown" if invalid else ("yes" if is_vpn else "no"),
         "high_latency_route": "unknown" if unmeasured or result.ping_ms is None else ("yes" if high_ping_route else "no"),
         "metric_contradiction": "unknown" if unmeasured or result.packet_loss is None or result.download_mbps is None else ("yes" if contradiction else "no"),
-        "likely_represents": "未知" if unmeasured else ("代理出口路径" if is_vpn else "当前 CLI 网络路径"),
+        "likely_represents": "未知" if unmeasured else ("可能的代理/TUN 路径" if is_vpn else "当前 CLI 网络路径"),
         "not_necessarily": "本地宽带裸连质量" if is_vpn and not unmeasured else "-",
     }
 
@@ -147,18 +149,34 @@ def get_analysis_summary(result: SpeedtestResult) -> str:
     return " | ".join(messages) if messages else "未检测到明显路径或指标矛盾。"
 
 
-def detect_vpn_tun(result: SpeedtestResult) -> bool:
-    """Return True when raw data indicates a TUN/VPN virtual interface."""
+def get_interface_evidence(result: SpeedtestResult) -> str:
+    """Classify reported interface evidence, not the route actually taken by traffic.
+
+    Benchmark addresses are a TUN hint, not proof of VPN use. Ordinary virtual
+    adapters and shared CGNAT addresses alone do not establish a proxy path.
+    """
     raw = result.raw
     if not isinstance(raw, dict):
-        return False
+        return "unknown"
     interface = raw.get("interface")
     if not isinstance(interface, dict):
-        return False
+        return "unknown"
     name = str(interface.get("name") or "").lower()
     internal_ip = str(interface.get("internalIp") or "")
     interface_type = get_backend().classify_interface(name, internal_ip, None)
-    return interface_type == "vpn" or internal_ip.startswith("198.18.")
+    if interface_type == "vpn":
+        return "vpn"
+    try:
+        if ipaddress.ip_address(internal_ip) in _BENCHMARK_NETWORK:
+            return "benchmark"
+    except ValueError:
+        pass
+    return interface_type
+
+
+def detect_vpn_tun(result: SpeedtestResult) -> bool:
+    """Return whether interface evidence suggests VPN/TUN, not route certainty."""
+    return get_interface_evidence(result) in {"vpn", "benchmark"}
 
 
 def has_high_loss_high_throughput(result: SpeedtestResult) -> bool:

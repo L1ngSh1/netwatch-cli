@@ -325,7 +325,7 @@ def print_proxy_exit_judgment(result: SpeedtestResult) -> None:
     if detect_vpn_tun(result):
         console.print("[yellow]检测到当前可能经过代理/TUN，结果更可能代表代理出口质量。[/yellow]")
     else:
-        console.print("[yellow]未检测到明显 TUN/VPN，结果更接近当前直连出口质量。[/yellow]")
+        console.print("[yellow]未检测到明显 TUN/VPN，仍未证实物理直连。[/yellow]")
     console.print("[dim]当前测速代表当前 CLI 出口路径，不一定代表本地宽带裸连质量。[/dim]")
 
 

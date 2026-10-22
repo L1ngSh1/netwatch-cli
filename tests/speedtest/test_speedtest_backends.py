@@ -1219,7 +1219,9 @@ def test_proxy_speedtest_no_vpn_tun_judgment(monkeypatch) -> None:
 
     output = buf.getvalue()
     assert "未检测到明显 TUN/VPN" in output
-    assert "更接近当前直连出口质量" in output
+    # Absence of an interface hint is not positive evidence of a direct route.
+    assert "仍未证实物理直连" in output
+    assert "更接近当前直连出口质量" not in output
 
 
 def test_show_auto_speedtest_still_shows_detailed(monkeypatch) -> None:

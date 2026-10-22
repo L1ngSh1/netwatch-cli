@@ -293,11 +293,7 @@ def get_speedtest_quality_details(result: SpeedtestResult) -> list[dict]:
     if isinstance(raw, dict):
         interface = raw.get("interface")
         if isinstance(interface, dict):
-            name = str(interface.get("name") or "").lower()
-            internal_ip = str(interface.get("internalIp") or "")
-            is_virtual_iface = get_backend().classify_interface(name, internal_ip, None) in {"vpn", "virtual"}
-            is_virtual_ip = internal_ip.startswith("198.18.")
-            if is_virtual_iface or is_virtual_ip:
+            if detect_vpn_tun(result):
                 details.append({
                     "condition": f"interface={interface.get('name')}, internalIp={interface.get('internalIp')}",
                     "advice": [
@@ -322,7 +318,7 @@ def summarize_speedtest_raw(result: SpeedtestResult) -> dict[str, str]:
         "jitter": f"{result.jitter_ms:.2f} ms" if result.jitter_ms is not None else "-",
         "packet_loss": f"{result.packet_loss:.2f}%" if result.packet_loss is not None else "-",
         "confidence": confidence,
-        "vpn_tun": "yes" if detect_vpn_tun(result) else "no",
+        "vpn_tun": path_summary["vpn_tun"],
         "current_exit": path_summary["current_exit"],
         "speedtest_server": path_summary["speedtest_server"],
         "analysis_summary": get_analysis_summary(result),
