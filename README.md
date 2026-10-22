@@ -368,5 +368,5 @@ netwatch-cli/
 ## 数据与许可证
 
 - AreaCity-JsSpider-StatsGov 使用 MIT license。
-- 本项目当前未包含独立 `LICENSE` 文件，项目许可证待补充。
+- 项目代码使用 [MIT License](LICENSE)；数据来源与适用条款仍按对应数据说明处理。
 - 不要把 `ok_geo.csv` 或 `ok_geo.csv.7z` 放入仓库；运行时只需要轻量 CSV。
