@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from netwatch.platform import get_backend
@@ -10,10 +11,45 @@ from netwatch.speedtest.backends.models import SpeedtestResult
 CONFIDENCE_HIGH = "HIGH"
 CONFIDENCE_MEDIUM = "MEDIUM"
 CONFIDENCE_LOW = "LOW"
+CONFIDENCE_UNKNOWN = "UNKNOWN"
+
+_MEASUREMENT_FIELDS = (
+    "ping_ms", "jitter_ms", "packet_loss", "download_mbps",
+    "download_MBps", "upload_mbps", "upload_MBps",
+)
+
+
+def get_result_diagnostic_issues(
+    result: SpeedtestResult, *, require_measurements: bool = False,
+) -> list[str]:
+    """Validate diagnostics without changing backend success or partial-data contracts.
+
+    Missing optional fields are allowed. Fact-only callers may inspect raw interface
+    data; quality/confidence callers require at least one valid measurement.
+    """
+    if result.error:
+        return ["测速失败，测量质量未知。"]
+    issues: list[str] = []
+    has_measurement = False
+    for field in _MEASUREMENT_FIELDS:
+        value = getattr(result, field)
+        if value is None:
+            continue
+        has_measurement = True
+        if (not isinstance(value, (int, float)) or isinstance(value, bool)
+                or not math.isfinite(value) or value < 0):
+            issues.append(f"{field} 不是有效的有限非负测量值。")
+        elif field == "packet_loss" and value > 100:
+            issues.append("packet_loss 超出 0–100% 范围。")
+    if require_measurements and not has_measurement:
+        issues.append("没有可用测量，测量质量未知。")
+    return issues
 
 
 def analyze_speedtest_consistency(result: SpeedtestResult) -> list[str]:
     """Return human-readable consistency and path analysis messages."""
+    if get_result_diagnostic_issues(result):
+        return []
     messages: list[str] = []
 
     if has_high_loss_high_throughput(result):
@@ -30,10 +66,13 @@ def analyze_speedtest_consistency(result: SpeedtestResult) -> list[str]:
         )
 
     if detect_vpn_tun(result):
-        messages.append(
-            "当前测速经过 TUN/VPN 虚拟网卡。测速结果代表当前代理出口路径，"
-            "而不一定代表本地宽带裸连质量。"
-        )
+        if get_result_diagnostic_issues(result, require_measurements=True):
+            messages.append("接口信息显示 TUN/VPN 虚拟网卡；没有可用测量，测量质量未知。")
+        else:
+            messages.append(
+                "当前测速经过 TUN/VPN 虚拟网卡。测速结果代表当前代理出口路径，"
+                "而不一定代表本地宽带裸连质量。"
+            )
 
     if result.download_mbps is not None and 95 <= result.download_mbps <= 100:
         messages.append("当前测速结果已接近典型 100 Mbps 网络理论上限（≈12.5 MB/s）。")
@@ -42,7 +81,10 @@ def analyze_speedtest_consistency(result: SpeedtestResult) -> list[str]:
 
 
 def get_result_confidence(result: SpeedtestResult) -> tuple[str, list[str]]:
-    """Return a simple confidence level and reasons."""
+    """Return confidence; UNKNOWN means failed, invalid, or entirely unmeasured."""
+    issues = get_result_diagnostic_issues(result, require_measurements=True)
+    if issues:
+        return CONFIDENCE_UNKNOWN, issues
     reasons: list[str] = []
 
     if result.packet_loss is not None and result.packet_loss > 20:
@@ -80,22 +122,27 @@ def get_result_confidence(result: SpeedtestResult) -> tuple[str, list[str]]:
 
 def build_network_path_summary(result: SpeedtestResult) -> dict[str, str]:
     """Return compact network path facts for CLI display and summaries."""
+    invalid = bool(get_result_diagnostic_issues(result))
+    unmeasured = bool(get_result_diagnostic_issues(result, require_measurements=True))
     is_vpn = detect_vpn_tun(result)
     high_ping_route = has_high_ping_to_asia_server(result)
     contradiction = has_high_loss_high_throughput(result)
     return {
         "current_exit": get_current_exit_label(result),
         "speedtest_server": get_server_label(result),
-        "vpn_tun": "yes" if is_vpn else "no",
-        "high_latency_route": "yes" if high_ping_route else "no",
-        "metric_contradiction": "yes" if contradiction else "no",
-        "likely_represents": "代理出口路径" if is_vpn else "当前 CLI 网络路径",
-        "not_necessarily": "本地宽带裸连质量" if is_vpn else "-",
+        "vpn_tun": "unknown" if invalid else ("yes" if is_vpn else "no"),
+        "high_latency_route": "unknown" if unmeasured or result.ping_ms is None else ("yes" if high_ping_route else "no"),
+        "metric_contradiction": "unknown" if unmeasured or result.packet_loss is None or result.download_mbps is None else ("yes" if contradiction else "no"),
+        "likely_represents": "未知" if unmeasured else ("代理出口路径" if is_vpn else "当前 CLI 网络路径"),
+        "not_necessarily": "本地宽带裸连质量" if is_vpn and not unmeasured else "-",
     }
 
 
 def get_analysis_summary(result: SpeedtestResult) -> str:
     """Return a compact one-line analysis summary."""
+    issues = get_result_diagnostic_issues(result, require_measurements=True)
+    if issues:
+        return "诊断不可用：" + "；".join(issues)
     messages = analyze_speedtest_consistency(result)
     return " | ".join(messages) if messages else "未检测到明显路径或指标矛盾。"
 
@@ -116,6 +163,8 @@ def detect_vpn_tun(result: SpeedtestResult) -> bool:
 
 def has_high_loss_high_throughput(result: SpeedtestResult) -> bool:
     """Return True for high packet loss with still-high throughput."""
+    if get_result_diagnostic_issues(result):
+        return False
     return (
         result.packet_loss is not None
         and result.packet_loss > 20
@@ -126,6 +175,8 @@ def has_high_loss_high_throughput(result: SpeedtestResult) -> bool:
 
 def has_high_ping_to_asia_server(result: SpeedtestResult) -> bool:
     """Return True for high ping to Tokyo/Japan/Hong Kong-like servers."""
+    if get_result_diagnostic_issues(result):
+        return False
     if result.ping_ms is None or result.ping_ms <= 100:
         return False
     server_text = get_server_label(result).lower()

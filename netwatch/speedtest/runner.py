@@ -7,6 +7,7 @@ from netwatch.speedtest.analysis import (
     detect_vpn_tun,
     get_analysis_summary,
     get_result_confidence,
+    get_result_diagnostic_issues,
 )
 from netwatch.core.config import get_preferred_librespeed
 from netwatch.network.info import get_preferred_physical_interface
@@ -228,6 +229,8 @@ def build_isp_preset_keywords(org: str = "", city: str = "", region: str = "") -
 
 def get_speedtest_quality_warnings(result: SpeedtestResult) -> list[str]:
     """Return human-readable quality warning reasons for suspicious speedtest results."""
+    if get_result_diagnostic_issues(result):
+        return []
     reasons: list[str] = []
     if result.ping_ms is not None and result.ping_ms > 80:
         reasons.append("ping > 80ms")
@@ -242,6 +245,8 @@ def get_speedtest_quality_warnings(result: SpeedtestResult) -> list[str]:
 
 def get_speedtest_quality_details(result: SpeedtestResult) -> list[dict]:
     """Return specific quality warnings with actionable advice."""
+    if get_result_diagnostic_issues(result):
+        return []
     details: list[dict] = []
 
     if result.ping_ms is not None and result.ping_ms > 80:

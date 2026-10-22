@@ -14,6 +14,7 @@ from netwatch.speedtest.analysis import (
     build_network_path_summary,
     detect_vpn_tun,
     get_result_confidence,
+    get_result_diagnostic_issues,
 )
 from netwatch.core.config import (
     clear_preferred_librespeed,
@@ -143,8 +144,17 @@ def run_speedtest_with_status(task) -> SpeedtestResult | None:
 def print_speedtest_result(result: SpeedtestResult, detailed: bool = True) -> None:
     """Print a unified speedtest result. detailed=True includes quality warnings + path analysis."""
     print_speedtest_result_table(result)
-    if detailed:
+    if detailed and not get_result_diagnostic_issues(result, require_measurements=True):
         print_speedtest_results_extra(result)
+
+
+def _print_unavailable_diagnostics(result: SpeedtestResult, *, require_measurements: bool = False) -> bool:
+    """Display unavailable diagnostics once at a public display entry point."""
+    issues = get_result_diagnostic_issues(result, require_measurements=require_measurements)
+    if not issues:
+        return False
+    console.print("[yellow]诊断不可用：" + "；".join(issues) + "[/yellow]")
+    return True
 
 
 def print_speedtest_result_table(result: SpeedtestResult) -> None:
@@ -154,6 +164,8 @@ def print_speedtest_result_table(result: SpeedtestResult) -> None:
         if result.backend == "none" or "Official Ookla CLI is not installed" in result.error:
             console.print("[yellow]推荐安装官方 Ookla CLI：[/yellow]")
             console.print(f"[bold]{get_ookla_install_hint()}[/bold]")
+        return
+    if _print_unavailable_diagnostics(result, require_measurements=True):
         return
 
     table = Table(title="Speedtest 测速结果")
@@ -183,12 +195,17 @@ def print_speedtest_result_table(result: SpeedtestResult) -> None:
 
 def print_speedtest_results_extra(result: SpeedtestResult) -> None:
     """Print detailed speedtest diagnostics: quality warnings and path analysis."""
-    print_speedtest_quality_warning(result)
+    if _print_unavailable_diagnostics(result):
+        return
+    if not get_result_diagnostic_issues(result, require_measurements=True):
+        print_speedtest_quality_warning(result)
     print_speedtest_path_analysis(result)
 
 
 def print_speedtest_quality_warning(result: SpeedtestResult) -> None:
     """Print speedtest quality warning with cause-specific actionable advice."""
+    if _print_unavailable_diagnostics(result, require_measurements=True):
+        return
     details = get_speedtest_quality_details(result)
     if not details:
         return
@@ -201,12 +218,20 @@ def print_speedtest_quality_warning(result: SpeedtestResult) -> None:
 
 def print_speedtest_path_analysis(result: SpeedtestResult) -> None:
     """Print speedtest confidence and network path analysis."""
+    if _print_unavailable_diagnostics(result):
+        return
     confidence, reasons = get_result_confidence(result)
     console.print(f"[bold]Result confidence:[/bold] {confidence}")
     for reason in reasons:
         console.print(f"[dim]- {reason}[/dim]")
 
     summary = build_network_path_summary(result)
+    if get_result_diagnostic_issues(result, require_measurements=True):
+        console.print("[dim]接口/节点信息（无测量结论）：[/dim]")
+        console.print(f"- 当前出口：{summary['current_exit']}")
+        console.print(f"- 测速节点：{summary['speedtest_server']}")
+        console.print(f"- VPN/TUN 线索：{summary['vpn_tun']}")
+        return
     console.print("[bold]网络路径分析：[/bold]")
     console.print(f"- 当前出口：{summary['current_exit']}")
     console.print(f"- 测速节点：{summary['speedtest_server']}")
@@ -274,6 +299,8 @@ def show_proxy_exit_speedtest() -> None:
         console.print(f"[red]当前出口测速失败：{compact_error(result.error)}[/red]")
         console.print("[yellow]可尝试：关闭/切换代理，或使用高级功能里的通用测速诊断。[/yellow]")
         return
+    if _print_unavailable_diagnostics(result, require_measurements=True):
+        return
 
     console.print("[dim]测速后端已返回结果，正在整理...[/dim]")
     time.sleep(0.3)
@@ -293,6 +320,8 @@ def show_proxy_exit_speedtest() -> None:
 
 def print_proxy_exit_judgment(result: SpeedtestResult) -> None:
     """Print a one-line judgment for the proxy exit speedtest result."""
+    if _print_unavailable_diagnostics(result, require_measurements=True):
+        return
     if detect_vpn_tun(result):
         console.print("[yellow]检测到当前可能经过代理/TUN，结果更可能代表代理出口质量。[/yellow]")
     else:
