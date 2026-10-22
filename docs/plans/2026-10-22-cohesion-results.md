@@ -63,8 +63,22 @@ git diff --check
 
 ## CI 与回退
 
-平台矩阵：Linux 3.10 base、Linux 3.14 all、Windows 3.14 all、macOS 3.14 all、macOS 3.14 browser。推送后核验精确提交对应的运行、JUnit 与安装/浏览器产物，结果待回填。
+验收运行：[39776053544](https://github.com/L1ngSh1/netwatch-cli/actions/runs/39776053544)，对应提交 `c0a6f76840ce33edc9352fcf105ba1290fdfbf1d`，五组合全部通过。下载五份产物并核对官方 ZIP SHA-256；JUnit 测试身份集合均与本地 604 个一致，原 451 个身份全部保留、新增 153 个。每个 wheel 的运行时文件与当前源码逐字节一致，依赖、入口及三份数据合同通过。
 
-分阶段提交：N1-A `c2dc3b3`、N1-B `3ade12c`、N1-C `4e008f8`、N2 `3ee8008`、N3/CI `75c6d32`。每一步可单独审查；回退时按相反顺序处理。整体副本回退、文件哈希和精确命令记录在本地 `.netwatch/implementation-2026-10-22/VERIFICATION.txt`，完成后补录结果。
+| 平台组合 | 回归 | 独立安装/中心点查询 | only-shell 本地 HTML/JS |
+| --- | --- | --- | --- |
+| Linux 3.10 base | 590 passed / 14 skipped | 通过 | 不安装 browser extra |
+| Linux 3.14 all | 604 passed | 通过 | 通过 |
+| Windows 3.14 all | 604 passed | 通过 | 通过 |
+| macOS 3.14 all | 604 passed | 通过 | 通过 |
+| macOS 3.14 browser | 590 passed / 14 skipped | 通过 | 通过；原完整 Chromium 验收也通过 |
+
+两组缺 Shapely 环境的 14 个 skip 身份与本地原可选用例逐一一致，不是只比数量。五个安装结果都确认高级模块 `0 → 7`、实际本地查询 2851 条记录、外部 I/O 为空；浏览器产物确认仅 shell 隔离目录及无公网导航。
+
+首轮 `39775569388` 的 Windows 测试暴露一处新 fixture 平台假设：把 Unix `bridge0` 交给 Windows 分类器。`c0a6f76` 保留测试身份和断言，显式分别检查 Linux/macOS 的 bridge 与 Windows 的 vEthernet；未修改生产平台分类、未新增 skip。复验后五组合通过。
+
+分阶段提交：N1-A `c2dc3b3`、N1-B `3ade12c`、N1-C `4e008f8`、N2 `3ee8008`、N3/CI `75c6d32`，跨平台 fixture 修正 `c0a6f76`。每一步可单独审查；回退时按相反顺序处理。
+
+整体文件级回退已在独立副本实测：14 个改动文件恢复、7 个本轮新增文件移除，恢复本轮开始前的 133 文件快照（包括此前已存在的工程计划）；每个原文件 SHA 一致，重跑 **451 passed / 外部 I/O 为 0**。实际工作分支保留实现，不卸载环境、不清理用户缓存，也不回退 Git 分支引用。脚本先检查所有目标/备份哈希，再写入这份明确清单。精确命令和结果位于本地 `.netwatch/implementation-2026-10-22/VERIFICATION.txt`。
 
 本地原始日志、数据真值对照、固定版本安装实验和阶段差异保留于 `.netwatch/implementation-2026-10-22/`；随仓库的回归与 CI 才是可重复验收入口，不依赖个人目录即可执行。
