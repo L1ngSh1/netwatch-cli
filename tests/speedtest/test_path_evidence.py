@@ -73,6 +73,12 @@ def test_benchmark_address_is_a_hint_not_proof_of_vpn():
     assert "当前测速经过" not in messages
 
 
-def test_regular_virtual_interface_is_distinct_from_absent_evidence():
-    assert analysis.get_interface_evidence(SpeedtestResult("fixture", raw={"interface": {"name": "bridge0"}})) == "virtual"
-    assert analysis.get_interface_evidence(SpeedtestResult("fixture")) == "unknown"
+def test_regular_virtual_interface_is_distinct_from_absent_evidence(monkeypatch):
+    # Test each platform's native fixture, rather than interpreting a Unix bridge
+    # through whichever platform happens to host pytest.
+    for platform, name in [(LinuxBackend, "bridge0"), (MacOSBackend, "bridge0"),
+                           (WindowsBackend, "vEthernet")]:
+        monkeypatch.setattr(analysis, "get_backend", platform)
+        result = SpeedtestResult("fixture", raw={"interface": {"name": name}})
+        assert analysis.get_interface_evidence(result) == "virtual"
+        assert analysis.get_interface_evidence(SpeedtestResult("fixture")) == "unknown"
